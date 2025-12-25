@@ -35,15 +35,59 @@ GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"  # Optional - OpenStreetMap is 
 # Google Gemini API (Get free key from https://aistudio.google.com/)
 GEMINI_API_KEY = "AIzaSyDPT3BMbLEUj17haABGGpSsx70lDoPUgEA"
 
+# Google Translate API (using Gemini for translation - FREE)
+TRANSLATE_ENABLED = True
+
 # Check if APIs are configured
 GOOGLE_AUTH_ENABLED = GOOGLE_CLIENT_ID != "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
 GOOGLE_MAPS_ENABLED = GOOGLE_MAPS_API_KEY != "YOUR_GOOGLE_MAPS_API_KEY"
 GEMINI_ENABLED = GEMINI_API_KEY != "YOUR_GEMINI_API_KEY"
 
-# GEMINI AI
+# =============================================================================
+# GOOGLE TRANSLATE (Using Gemini AI for translation - FREE, no separate API key)
+# =============================================================================
 import urllib.request
 import urllib.parse
 
+def translate_to_english(text):
+    """Translate Hindi/Regional text to English using Gemini AI"""
+    if not GEMINI_ENABLED or not TRANSLATE_ENABLED:
+        return text
+    
+    # Quick check - if already English, return as-is
+    if all(ord(c) < 128 or c in ' .,!?' for c in text):
+        return text  # Already ASCII/English
+    
+    try:
+        prompt = f"""Translate the following text to English. If it's already in English, return it as-is.
+Only return the translation, nothing else. Keep medical terms accurate.
+
+Text: {text}
+
+Translation:"""
+        
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+        
+        data = json.dumps({
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": 0.1,
+                "maxOutputTokens": 100
+            }
+        }).encode('utf-8')
+        
+        req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
+        
+        with urllib.request.urlopen(req, timeout=5) as response:
+            result = json.loads(response.read().decode('utf-8'))
+            translated = result['candidates'][0]['content']['parts'][0]['text'].strip()
+            print(f"🌐 Translated: '{text}' → '{translated}'")
+            return translated
+    except Exception as e:
+        print(f"Translation error: {e}")
+        return text  # Return original if translation fails
+
+# GEMINI AI
 def get_gemini_health_advice(symptom, medicines):
     """Get AI health advice from Google Gemini"""
     if not GEMINI_ENABLED:
