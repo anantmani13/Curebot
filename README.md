@@ -4,50 +4,56 @@
   <img src="https://img.shields.io/badge/Python-3.11+-blue?style=for-the-badge&logo=python" alt="Python">
   <img src="https://img.shields.io/badge/Dash-3.x-00695C?style=for-the-badge&logo=plotly" alt="Dash">
   <img src="https://img.shields.io/badge/ML-TF--IDF-orange?style=for-the-badge&logo=scikit-learn" alt="ML">
+  <img src="https://img.shields.io/badge/Google-Cloud-4285F4?style=for-the-badge&logo=google-cloud" alt="Google Cloud">
+  <img src="https://img.shields.io/badge/Gemini-AI-8E75B2?style=for-the-badge&logo=google" alt="Gemini AI">
   <img src="https://img.shields.io/badge/Maps-OpenStreetMap-green?style=for-the-badge&logo=openstreetmap" alt="OpenStreetMap">
-  <img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License">
 </p>
 
 <p align="center">
-  <b>An intelligent medicine recommendation chatbot that suggests medicines based on symptoms using Machine Learning.</b>
+  <b>🚀 Built for Google Developers Group (GDG) | Powered by Google Technologies</b>
 </p>
+
+---
+
+## 🌟 Google Technologies Used
+
+| Technology | Usage |
+|------------|-------|
+| 🔐 **Google Sign-In (OAuth 2.0)** | Secure user authentication |
+| 🤖 **Google Gemini AI** | Smart health advice and recommendations |
+| 📊 **Google AI Studio** | AI model integration |
+| 🗺️ **Google Maps Directions** | Navigation to pharmacies/hospitals |
+| ☁️ **Google Cloud Platform** | API hosting and management |
 
 ---
 
 ## ✨ Features
 
+### Core Features
 | Feature | Description |
 |---------|-------------|
-| 🤖 **AI-Powered Recommendations** | Uses TF-IDF + Cosine Similarity to match symptoms with medicines |
-| 💊 **248,000+ Medicines** | Comprehensive database of medicines with uses and side effects |
-| 🗺️ **Find Nearby Pharmacies** | FREE OpenStreetMap integration to locate pharmacies near you |
-| ⚡ **Quick Symptom Buttons** | 14 pre-configured symptom shortcuts for fast searching |
-| 🎨 **Premium UI** | Beautiful hospital-green themed interface with smooth animations |
-| 🚨 **Emergency Detection** | Automatically detects emergency keywords and shows helpline numbers |
-| 📱 **Responsive Design** | Works on desktop and mobile devices |
+| 🤖 **AI-Powered Recommendations** | TF-IDF + Cosine Similarity ML model with n-grams (1-4) |
+| 💊 **248,000+ Medicines** | Comprehensive database with uses, forms, and side effects |
+| 🧠 **30 Symptom Categories** | Smart synonym matching for accurate results |
+| 📊 **Interactive Disease Analytics** | Plotly graphs showing recovery rates, prevalence, severity |
+| 🔐 **Google Sign-In** | Secure OAuth 2.0 authentication |
+| 💎 **Google Gemini AI** | AI-powered health advice integration |
 
----
+### Map and Location Features
+| Feature | Description |
+|---------|-------------|
+| 🗺️ **Find Nearby Pharmacies** | FREE OpenStreetMap + Leaflet.js integration |
+| 🏥 **Hospital Locator** | Emergency mode finds nearest hospitals |
+| 📞 **Contact Info** | Phone numbers and directions via Google Maps |
+| 📍 **Real-time Location** | GPS-based nearest location finding |
 
-## 🖥️ Screenshots
-
-### Main Interface
-```
-┌──────────────────────────────────────────────────────────────┐
-│  ➕ CureBot - Your AI-Powered Medicine Assistant             │
-│  ────────────────────────────────────────────────────────────│
-│  🟢 AI Active • 248,218 medicines    📍 Find Nearby Pharmacy │
-├──────────────────────────────────────────────────────────────┤
-│  🤖 Welcome to CureBot!                                      │
-│     I'm your AI medicine assistant. Describe your symptoms   │
-│     and I'll help you find the right medicine.               │
-│                                                              │
-│  ⚡ Quick Search:                                            │
-│  [🤕 Headache] [🌡️ Fever] [🤧 Cold] [😷 Cough] [💪 Pain]    │
-│  [🤢 Nausea] [😴 Sleep] [🤧 Allergy] [🩸 Diabetes] ...      │
-│                                                              │
-│  💬 [Describe your symptoms...              ] [🔍 Find]      │
-└──────────────────────────────────────────────────────────────┘
-```
+### Emergency Mode 🚨
+| Feature | Description |
+|---------|-------------|
+| 🔴 **Emergency UI** | Full-screen red danger interface |
+| 🏥 **Nearest Hospitals** | Auto-detects hospitals within 10km |
+| 📞 **Quick Dial** | 102, 108, 112, 100 emergency numbers |
+| 🚑 **Directions** | One-click navigation to hospitals |
 
 ---
 
@@ -61,8 +67,8 @@
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/anantmani13/CureBot.git
-   cd CureBot
+   git clone https://github.com/anantmani13/Curebot.git
+   cd Curebot
    ```
 
 2. **Create virtual environment**
@@ -78,14 +84,20 @@
 
 3. **Install dependencies**
    ```bash
-   pip install dash pandas numpy scikit-learn
+   pip install -r requirements.txt
    ```
 
-4. **Download datasets** (Required)
-   - `all_medicine databased.csv` (248,218 medicines)
-   - `medicine_dataset.csv` (50,000 inventory items)
+4. **Configure Google APIs** (Optional but recommended)
    
-   > Place both CSV files in the same directory as `web.py`
+   Edit `web.py` and add your API keys:
+   ```python
+   GOOGLE_CLIENT_ID = "your-client-id.apps.googleusercontent.com"
+   GEMINI_API_KEY = "your-gemini-api-key"
+   ```
+   
+   Get keys from:
+   - Google Sign-In: https://console.cloud.google.com/
+   - Gemini API: https://aistudio.google.com/
 
 5. **Run the application**
    ```bash
@@ -99,145 +111,73 @@
 
 ---
 
-## 📁 Project Structure
+## 🔧 API Configuration
 
-```
-CureBot/
-├── web.py                      # Main application (Dash + ML)
-├── medimatch_app.py            # Backup/alternative ML script
-├── all_medicine databased.csv  # Primary medicine database
-├── medicine_dataset.csv        # Secondary inventory data
-├── README.md                   # This file
-└── requirements.txt            # Python dependencies
-```
+### Google Sign-In Setup
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project
+3. Enable "Google Sign-In API"
+4. Create OAuth 2.0 credentials
+5. Add authorized JavaScript origins: `http://localhost:8051`
+6. Copy Client ID to `web.py`
 
----
-
-## 🧠 How It Works
-
-### Machine Learning Pipeline
-
-```
-User Input (Symptoms)
-        │
-        ▼
-┌───────────────────┐
-│ Symptom Expansion │  ← 30 symptom synonym categories
-│   (Preprocessing) │
-└─────────┬─────────┘
-          │
-          ▼
-┌───────────────────┐
-│  TF-IDF Vectorizer │  ← N-grams (1-4), 15,000 features
-│                    │
-└─────────┬──────────┘
-          │
-          ▼
-┌───────────────────┐
-│ Cosine Similarity │  ← Match against 248K medicines
-│                   │
-└─────────┬─────────┘
-          │
-          ▼
-┌───────────────────┐
-│  Top 12 Results   │  ← Ranked by relevance score
-└───────────────────┘
-```
-
-### Key Technologies
-
-| Component | Technology |
-|-----------|------------|
-| Frontend | Dash (Python) |
-| ML Model | TF-IDF + Cosine Similarity |
-| Maps | OpenStreetMap + Leaflet.js (FREE!) |
-| Styling | Custom CSS with Glassmorphism |
+### Google Gemini AI Setup
+1. Go to [Google AI Studio](https://aistudio.google.com/)
+2. Create a new API key
+3. Copy the key to `web.py`
 
 ---
 
-## 🗺️ Pharmacy Finder
+## 🧠 Machine Learning Model
 
-CureBot includes a **FREE** pharmacy locator powered by OpenStreetMap:
-
-- Click **"📍 Find Nearby Pharmacy"**
-- Allow location access
-- View nearby pharmacies on an interactive map
-- Get directions to any pharmacy
-
-**No API key required!** 🆓
-
----
-
-## ⚠️ Disclaimer
-
-> **CureBot is for educational purposes only.**
-> 
-> - This is NOT a substitute for professional medical advice
-> - Always consult a qualified doctor before taking any medication
-> - In case of emergency, call: **102 / 108 / 911**
+- **Algorithm**: TF-IDF Vectorizer + Cosine Similarity
+- **N-grams**: 1-4 (unigrams to 4-grams)
+- **Max Features**: 15,000
+- **Sublinear TF**: Enabled
+- **Stop Words**: English
+- **L2 Normalization**: Applied
+- **Symptom Categories**: 30 synonym groups
 
 ---
 
-## 🛠️ Tech Stack
+## 📊 Disease Analytics
 
-- **Python 3.11+**
-- **Dash** - Web framework
-- **Pandas** - Data manipulation
-- **NumPy** - Numerical operations
-- **Scikit-learn** - Machine Learning
-- **Leaflet.js** - Interactive maps
-- **OpenStreetMap** - Free map tiles
-
----
-
-## 📊 Dataset Information
-
-| Dataset | Records | Size |
-|---------|---------|------|
-| Medicine Database | 248,218 | ~85 MB |
-| Inventory Data | 50,000 | ~3.7 MB |
-
-**Columns include:**
-- Medicine Name
-- Primary Use
-- Therapeutic Class
-- Side Effects (0-10)
-- Dosage Form
-- Classification (OTC/Prescription)
+Interactive Plotly graphs showing:
+- **Recovery Rate** - Gauge chart showing success rate
+- **Prevalence** - How common the condition is
+- **Average Duration** - Days to recovery
+- **Severity Level** - Low / Medium / High
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Feel free to:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit changes (`git commit -m 'Add AmazingFeature'`)
-4. Push to branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ---
 
-## 👨‍💻 Author
+## 📝 License
 
-**Anant Mani**
-- GitHub: [@anantmani13](https://github.com/anantmani13)
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License.
 
 ---
 
-## ⭐ Show Your Support
+## ⚠️ Disclaimer
 
-If you found this project helpful, please give it a ⭐ on GitHub!
+**CureBot is for educational purposes only.** It is NOT a substitute for professional medical advice. Always consult a qualified healthcare provider.
+
+**In case of emergency, call:**
+- 🚑 Ambulance: **102** / **108**
+- 🆘 Emergency: **112**
+- 👮 Police: **100**
 
 ---
+
+## 👨‍💻 Team
+
+Built with ❤️ for **Google Developers Group (GDG)**
 
 <p align="center">
-  Made with ❤️ for Google Developer Group
+  <img src="https://img.shields.io/badge/Made%20with-Python-blue?style=flat-square&logo=python" alt="Made with Python">
+  <img src="https://img.shields.io/badge/Powered%20by-Google%20AI-4285F4?style=flat-square&logo=google" alt="Powered by Google AI">
 </p>
