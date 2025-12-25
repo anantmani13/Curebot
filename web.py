@@ -3021,22 +3021,6 @@ app.layout = html.Div([
                     'boxShadow': 'var(--shadow-soft)',
                 }
             ),
-            # 🎤 Voice Input Button (Speech-to-Text)
-            html.Button([
-                html.Span("🎤", style={'fontSize': '1.4rem'})
-            ],
-                id='voice-btn',
-                n_clicks=0,
-                title='🎤 Click to speak - Auto-detects Hindi & English!',
-                style={
-                    'padding': '18px 22px',
-                    'background': 'linear-gradient(135deg, #7B1FA2 0%, #9C27B0 100%)',
-                    'color': 'white', 'border': 'none', 'borderRadius': '50%',
-                    'cursor': 'pointer', 'fontSize': '1.2rem',
-                    'boxShadow': '0 4px 15px rgba(123,31,162,0.4)',
-                    'transition': 'all 0.3s ease'
-                }
-            ),
             html.Button([
                 html.Span("🔍", style={'marginRight': '10px', 'fontSize': '1.2rem'}),
                 html.Span("Find Medicine")
@@ -3081,7 +3065,7 @@ app.layout = html.Div([
     html.Div(id='skip-login-trigger', style={'display': 'none'}),
     html.Div(id='fallback-google-trigger', style={'display': 'none'}),
     html.Div(id='emergency-trigger', style={'display': 'none'}),
-    html.Div(id='voice-trigger', style={'display': 'none'})  # Voice input trigger
+
 
 ])
 
@@ -3160,123 +3144,6 @@ app.clientside_callback(
     """,
     Output('emergency-trigger', 'children'),
     Input('emergency-btn', 'n_clicks')
-)
-
-# 🎤 Voice Input (Speech-to-Text) - Uses browser's Web Speech API
-app.clientside_callback(
-    """
-    function(n_clicks) {
-        if (!n_clicks || n_clicks === 0) return "";
-        
-        var voiceBtn = document.getElementById('voice-btn');
-        var inputField = document.getElementById('user-input');
-        var sendBtn = document.getElementById('send-btn');
-        
-        if (!voiceBtn || !inputField || !sendBtn) {
-            console.error('Required elements not found');
-            return "";
-        }
-        
-        var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-            alert('🎤 Speech recognition not supported. Please use Chrome, Edge, or Safari browser.');
-            return "";
-        }
-        
-        try {
-            var recognition = new SpeechRecognition();
-            
-            recognition.lang = 'en-IN';
-            recognition.interimResults = false;
-            recognition.continuous = false;
-            recognition.maxAlternatives = 1;
-            
-            voiceBtn.disabled = true;
-            voiceBtn.style.background = 'linear-gradient(135deg, #D32F2F 0%, #F44336 100%)';
-            voiceBtn.innerHTML = '🔴';
-            voiceBtn.style.transform = 'scale(1.1)';
-            
-            recognition.start();
-            console.log('🎤 Voice recognition started...');
-            
-            var finalTranscript = '';
-            
-            recognition.onresult = function(event) {
-                console.log('🎤 Got result event');
-                if (event.results && event.results.length > 0) {
-                    finalTranscript = event.results[0][0].transcript;
-                    console.log('🎤 Recognized text:', finalTranscript);
-                    
-                    inputField.value = finalTranscript;
-                    
-                    var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-                    nativeInputValueSetter.call(inputField, finalTranscript);
-                    
-                    var inputEvent = new Event('input', { bubbles: true });
-                    inputField.dispatchEvent(inputEvent);
-                    
-                    var changeEvent = new Event('change', { bubbles: true });
-                    inputField.dispatchEvent(changeEvent);
-                }
-            };
-            
-            recognition.onend = function() {
-                console.log('🎤 Recognition ended');
-                voiceBtn.disabled = false;
-                voiceBtn.style.background = 'linear-gradient(135deg, #7B1FA2 0%, #9C27B0 100%)';
-                voiceBtn.innerHTML = '🎤';
-                voiceBtn.style.transform = 'scale(1)';
-                
-                if (finalTranscript && finalTranscript.trim().length > 0) {
-                    console.log('🎤 Auto-submitting search for:', finalTranscript);
-                    setTimeout(function() {
-                        console.log('🎤 Clicking send button...');
-                        sendBtn.click();
-                    }, 500);
-                } else {
-                    console.log('🎤 No transcript to submit');
-                }
-            };
-            
-            recognition.onerror = function(event) {
-                voiceBtn.disabled = false;
-                voiceBtn.style.background = 'linear-gradient(135deg, #7B1FA2 0%, #9C27B0 100%)';
-                voiceBtn.innerHTML = '🎤';
-                voiceBtn.style.transform = 'scale(1)';
-                
-                if (event.error === 'aborted') {
-                    console.log('🎤 Recognition aborted - ignoring');
-                    return;
-                }
-                
-                console.error('🎤 Speech error:', event.error);
-                
-                if (event.error === 'no-speech') {
-                    alert('🎤 No speech detected. Please speak clearly and try again.');
-                } else if (event.error === 'not-allowed' || event.error === 'permission-denied') {
-                    alert('🎤 Microphone permission denied.\\n\\nPlease:\\n1. Click the 🔒 lock icon in address bar\\n2. Allow microphone access\\n3. Refresh page');
-                } else if (event.error === 'network') {
-                    alert('🎤 Network error. Check your internet connection.');
-                } else {
-                    alert('🎤 Error: ' + event.error);
-                }
-            };
-            
-        } catch (error) {
-            voiceBtn.disabled = false;
-            voiceBtn.style.background = 'linear-gradient(135deg, #7B1FA2 0%, #9C27B0 100%)';
-            voiceBtn.innerHTML = '🎤';
-            voiceBtn.style.transform = 'scale(1)';
-            
-            console.error('🎤 Recognition error:', error);
-            alert('Speech recognition failed: ' + error.message);
-        }
-        
-        return "";
-    }
-    """,
-    Output('voice-trigger', 'children'),
-    Input('voice-btn', 'n_clicks')
 )
 
 # Main Chat Callback
