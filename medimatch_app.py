@@ -1,6 +1,7 @@
 """
 MEDIMATCH ML ENGINE - CureBot Machine Learning Core
 Hybrid Search: TF-IDF + Semantic (Sentence Transformers)
++ Google Translate (Hindi to English via Gemini AI)
 """
 
 import pandas as pd
@@ -21,6 +22,47 @@ try:
 except ImportError:
     SEMANTIC_AVAILABLE = False
     print("⚠️ Sentence Transformers not available")
+
+# =============================================================================
+# GOOGLE TRANSLATE (Using Gemini AI - FREE, no separate API key needed!)
+# =============================================================================
+GEMINI_API_KEY = "AIzaSyDPT3BMbLEUj17haABGGpSsx70lDoPUgEA"
+TRANSLATE_ENABLED = True
+
+def translate_to_english(text):
+    """Translate Hindi/Regional text to English using Gemini AI (FREE)"""
+    if not TRANSLATE_ENABLED:
+        return text
+    
+    # Quick check - if already English, return as-is
+    if all(ord(c) < 128 or c in ' .,!?' for c in text):
+        return text
+    
+    try:
+        prompt = f"""Translate the following text to English. If it's already in English, return it as-is.
+Only return the translation, nothing else. Keep medical terms accurate.
+
+Text: {text}
+
+Translation:"""
+        
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+        
+        data = json.dumps({
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 100}
+        }).encode('utf-8')
+        
+        req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
+        
+        with urllib.request.urlopen(req, timeout=5) as response:
+            result = json.loads(response.read().decode('utf-8'))
+            translated = result['candidates'][0]['content']['parts'][0]['text'].strip()
+            print(f"🌐 Translated: '{text}' → '{translated}'")
+            return translated
+    except Exception as e:
+        print(f"Translation error: {e}")
+        return text
 
 # DATA LOADING
 def extract_zip_if_needed(zip_path, extract_to='.'):
