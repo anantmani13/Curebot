@@ -376,9 +376,93 @@ SYMPTOM_SYNONYMS = {
     'fatigue': 'fatigue tiredness weakness energy exhaustion',
 }
 
+# SMART BODY PART + SYMPTOM DETECTION
+# Maps natural language to specific conditions
+SMART_SYMPTOM_MAP = {
+    # Head related
+    ('head', 'pain'): 'headache migraine cephalalgia head pain tension headache',
+    ('head', 'paining'): 'headache migraine cephalalgia head pain tension headache',
+    ('head', 'ache'): 'headache migraine cephalalgia head pain tension headache',
+    ('head', 'hurt'): 'headache migraine cephalalgia head pain tension headache',
+    ('sir', 'dard'): 'headache migraine cephalalgia head pain tension headache',
+    ('sar', 'dard'): 'headache migraine cephalalgia head pain tension headache',
+    
+    # Stomach related
+    ('stomach', 'pain'): 'stomach pain gastric abdominal pain gastritis peptic ulcer acidity',
+    ('stomach', 'ache'): 'stomach pain gastric abdominal pain gastritis peptic ulcer acidity',
+    ('pet', 'dard'): 'stomach pain gastric abdominal pain gastritis peptic ulcer acidity',
+    ('tummy', 'ache'): 'stomach pain gastric abdominal pain gastritis peptic ulcer acidity',
+    ('tummy', 'pain'): 'stomach pain gastric abdominal pain gastritis peptic ulcer acidity',
+    
+    # Back related
+    ('back', 'pain'): 'back pain lumbar backache spinal muscular relaxant',
+    ('kamar', 'dard'): 'back pain lumbar backache spinal muscular relaxant',
+    
+    # Chest related
+    ('chest', 'pain'): 'chest pain angina cardiac heart antacid',
+    ('seena', 'dard'): 'chest pain angina cardiac heart antacid',
+    
+    # Throat related
+    ('throat', 'pain'): 'sore throat pharyngitis tonsillitis strep throat infection',
+    ('gala', 'dard'): 'sore throat pharyngitis tonsillitis strep throat infection',
+    ('gala', 'kharab'): 'sore throat pharyngitis tonsillitis strep throat infection',
+    
+    # Joint/Knee/Leg
+    ('knee', 'pain'): 'knee pain joint pain arthritis orthopedic glucosamine',
+    ('ghutna', 'dard'): 'knee pain joint pain arthritis orthopedic glucosamine',
+    ('joint', 'pain'): 'joint pain arthritis rheumatoid orthopedic glucosamine',
+    ('leg', 'pain'): 'leg pain muscle cramp varicose circulation',
+    
+    # Tooth/Dental
+    ('tooth', 'pain'): 'toothache dental pain analgesic antibiotic dental',
+    ('tooth', 'ache'): 'toothache dental pain analgesic antibiotic dental',
+    ('dant', 'dard'): 'toothache dental pain analgesic antibiotic dental',
+    
+    # Eye
+    ('eye', 'pain'): 'eye pain conjunctivitis ophthalmic eye drops',
+    ('aankh', 'dard'): 'eye pain conjunctivitis ophthalmic eye drops',
+    
+    # Ear
+    ('ear', 'pain'): 'ear pain otitis otic ear drops infection',
+    ('kaan', 'dard'): 'ear pain otitis otic ear drops infection',
+    
+    # Muscle
+    ('muscle', 'pain'): 'muscle pain myalgia muscular relaxant sprain strain',
+    
+    # Body general
+    ('body', 'pain'): 'body pain analgesic painkiller fever viral',
+    ('badan', 'dard'): 'body pain analgesic painkiller fever viral',
+}
+
+def smart_symptom_detection(user_input):
+    """Detect body part + symptom combinations for precise matching"""
+    query = user_input.lower()
+    detected_symptoms = []
+    
+    # Check for smart body part + symptom combinations
+    for (body_part, symptom), expansion in SMART_SYMPTOM_MAP.items():
+        if body_part in query and symptom in query:
+            detected_symptoms.append(expansion)
+    
+    # If we found specific combinations, use them
+    if detected_symptoms:
+        return ' '.join(detected_symptoms)
+    
+    # Fallback to original synonym expansion
+    return None
+
 def expand_symptoms(user_input):
     """Expand user input with synonyms for better matching"""
     expanded = user_input.lower()
+    
+    # First try smart detection
+    smart_expansion = smart_symptom_detection(user_input)
+    if smart_expansion:
+        # Prioritize specific detection over generic
+        expanded = expanded + ' ' + smart_expansion
+        return expanded
+    
+    # Fallback to keyword-based expansion
     for key, synonyms in SYMPTOM_SYNONYMS.items():
         if key in expanded:
             expanded = expanded + ' ' + synonyms
@@ -386,7 +470,8 @@ def expand_symptoms(user_input):
 
 # SMART QUERY VALIDATION - Reject non-medical queries
 MEDICAL_KEYWORDS = {
-    'pain', 'ache', 'fever', 'cold', 'cough', 'headache', 'stomach', 'nausea', 'vomiting',
+    'pain', 'paining', 'ache', 'aching', 'hurt', 'hurting', 'dard',
+    'fever', 'cold', 'cough', 'headache', 'stomach', 'nausea', 'vomiting',
     'diarrhea', 'allergy', 'rash', 'infection', 'diabetes', 'sugar', 'blood', 'pressure',
     'heart', 'chest', 'breathing', 'asthma', 'anxiety', 'stress', 'depression', 'sleep',
     'insomnia', 'tired', 'fatigue', 'weakness', 'dizziness', 'vertigo', 'eye', 'ear',
@@ -485,10 +570,38 @@ else:
 # 2. ML CORE FUNCTIONS - Enhanced Recommendation Engine
 # =============================================================================
 
+def detect_primary_symptom(user_input):
+    """Detect the primary symptom category for filtering"""
+    query = user_input.lower()
+    
+    # Body part detection for filtering
+    BODY_SYMPTOM_FILTER = {
+        'head': ['headache', 'migraine', 'cephalalgia', 'analgesic', 'pain relief'],
+        'stomach': ['gastric', 'antacid', 'peptic', 'abdominal', 'digestive', 'acid'],
+        'back': ['lumbar', 'backache', 'spinal', 'muscle relaxant'],
+        'throat': ['pharyngitis', 'throat', 'tonsil', 'strep', 'cough'],
+        'chest': ['cardiac', 'angina', 'heart', 'antacid'],
+        'tooth': ['dental', 'toothache', 'oral'],
+        'eye': ['ophthalmic', 'conjunctiv', 'eye'],
+        'ear': ['otitis', 'otic', 'ear'],
+        'knee': ['arthritis', 'joint', 'orthopedic', 'glucosamine'],
+        'joint': ['arthritis', 'joint', 'orthopedic', 'glucosamine'],
+        'muscle': ['muscular', 'myalgia', 'relaxant', 'sprain'],
+    }
+    
+    for body_part, filter_keywords in BODY_SYMPTOM_FILTER.items():
+        if body_part in query and ('pain' in query or 'paining' in query or 'ache' in query or 'hurt' in query or 'dard' in query):
+            return filter_keywords
+    
+    return None
+
 def get_recommendations(user_input):
-    """Hybrid recommendation: TF-IDF + Semantic Search"""
+    """Hybrid recommendation: TF-IDF + Semantic Search with smart filtering"""
     if not DATA_LOADED:
         return pd.DataFrame()
+    
+    # Detect primary symptom for filtering
+    filter_keywords = detect_primary_symptom(user_input)
     
     # Expand input with synonyms
     expanded_input = expand_symptoms(user_input)
@@ -496,14 +609,14 @@ def get_recommendations(user_input):
     # 1. TF-IDF Search
     user_vec = vectorizer.transform([expanded_input])
     cosine_sim = cosine_similarity(user_vec, tfidf_matrix).flatten()
-    tfidf_indices = cosine_sim.argsort()[-100:][::-1]
+    tfidf_indices = cosine_sim.argsort()[-150:][::-1]
     tfidf_scores = {i: cosine_sim[i] for i in tfidf_indices if cosine_sim[i] > 0.02}
     
     # 2. Semantic Search (if available)
     semantic_indices = set()
     if semantic_model is not None and medicine_embeddings is not None:
         try:
-            query_embedding = semantic_model.encode([user_input.lower()])
+            query_embedding = semantic_model.encode([expanded_input])
             similarities = cosine_similarity(query_embedding, medicine_embeddings['embeddings']).flatten()
             top_sem_indices = similarities.argsort()[-50:][::-1]
             
@@ -511,9 +624,8 @@ def get_recommendations(user_input):
                 if similarities[idx] > 0.3:
                     original_idx = medicine_embeddings['indices'][idx]
                     semantic_indices.add(original_idx)
-                    # Boost score if also in TF-IDF
                     if original_idx in tfidf_scores:
-                        tfidf_scores[original_idx] *= 1.5  # Boost hybrid matches
+                        tfidf_scores[original_idx] *= 1.5
                     else:
                         tfidf_scores[original_idx] = similarities[idx] * 0.8
         except Exception as e:
@@ -522,11 +634,29 @@ def get_recommendations(user_input):
     # 3. Combine and rank
     all_indices = sorted(tfidf_scores.keys(), key=lambda x: tfidf_scores[x], reverse=True)
     
+    # 4. SMART FILTERING: Boost relevant results, penalize irrelevant
+    if filter_keywords:
+        filtered_scores = {}
+        for idx in all_indices:
+            row = df1.iloc[idx]
+            combined_use = str(row.get('combined_use', '')).lower()
+            therapeutic_class = str(row.get('Therapeutic Class', '')).lower()
+            
+            # Check if medicine matches the detected symptom category
+            matches_filter = any(kw in combined_use or kw in therapeutic_class for kw in filter_keywords)
+            
+            if matches_filter:
+                filtered_scores[idx] = tfidf_scores[idx] * 2.0  # BOOST relevant
+            else:
+                filtered_scores[idx] = tfidf_scores[idx] * 0.3  # PENALIZE irrelevant
+        
+        all_indices = sorted(filtered_scores.keys(), key=lambda x: filtered_scores[x], reverse=True)
+    
     # Dynamic threshold
     word_count = len(user_input.split())
     threshold = 0.03 if word_count <= 1 else 0.05 if word_count <= 3 else 0.07
     
-    relevant_indices = [i for i in all_indices if tfidf_scores[i] > threshold][:150]
+    relevant_indices = [i for i in all_indices if tfidf_scores[i] > threshold][:100]
     
     # Fallback
     if not relevant_indices and all_indices:

@@ -210,6 +210,7 @@ def hybrid_search(query, df1, vectorizer, tfidf_matrix, top_n=15):
             result['Search Type'] = 'TF-IDF'
         boosted_results.append(result)
     
+    # Add unique semantic results
     for sem_result in semantic_results:
         if not any(r['Medicine Name'].lower() == sem_result['Medicine Name'].lower() for r in boosted_results):
             boosted_results.append({
@@ -226,6 +227,47 @@ def hybrid_search(query, df1, vectorizer, tfidf_matrix, top_n=15):
     
     boosted_results.sort(key=lambda x: x['Raw Score'], reverse=True)
     return boosted_results[:top_n]
+
+# SMART BODY PART + SYMPTOM DETECTION
+SMART_SYMPTOM_MAP = {
+    ('head', 'pain'): 'headache migraine cephalalgia head pain tension headache',
+    ('head', 'paining'): 'headache migraine cephalalgia head pain tension headache',
+    ('head', 'ache'): 'headache migraine cephalalgia head pain tension headache',
+    ('head', 'hurt'): 'headache migraine cephalalgia head pain tension headache',
+    ('sir', 'dard'): 'headache migraine cephalalgia head pain tension headache',
+    ('sar', 'dard'): 'headache migraine cephalalgia head pain tension headache',
+    ('stomach', 'pain'): 'stomach pain gastric abdominal pain gastritis peptic ulcer acidity',
+    ('stomach', 'ache'): 'stomach pain gastric abdominal pain gastritis peptic ulcer acidity',
+    ('pet', 'dard'): 'stomach pain gastric abdominal pain gastritis peptic ulcer acidity',
+    ('tummy', 'ache'): 'stomach pain gastric abdominal pain gastritis peptic ulcer acidity',
+    ('back', 'pain'): 'back pain lumbar backache spinal muscular relaxant',
+    ('kamar', 'dard'): 'back pain lumbar backache spinal muscular relaxant',
+    ('chest', 'pain'): 'chest pain angina cardiac heart antacid',
+    ('throat', 'pain'): 'sore throat pharyngitis tonsillitis strep throat infection',
+    ('gala', 'dard'): 'sore throat pharyngitis tonsillitis strep throat infection',
+    ('knee', 'pain'): 'knee pain joint pain arthritis orthopedic glucosamine',
+    ('ghutna', 'dard'): 'knee pain joint pain arthritis orthopedic glucosamine',
+    ('joint', 'pain'): 'joint pain arthritis rheumatoid orthopedic glucosamine',
+    ('tooth', 'pain'): 'toothache dental pain analgesic antibiotic dental',
+    ('dant', 'dard'): 'toothache dental pain analgesic antibiotic dental',
+    ('eye', 'pain'): 'eye pain conjunctivitis ophthalmic eye drops',
+    ('ear', 'pain'): 'ear pain otitis otic ear drops infection',
+    ('muscle', 'pain'): 'muscle pain myalgia muscular relaxant sprain strain',
+    ('body', 'pain'): 'body pain analgesic painkiller fever viral',
+}
+
+def smart_symptom_detection(user_input):
+    """Detect body part + symptom combinations for precise matching"""
+    query = user_input.lower()
+    detected_symptoms = []
+    
+    for (body_part, symptom), expansion in SMART_SYMPTOM_MAP.items():
+        if body_part in query and symptom in query:
+            detected_symptoms.append(expansion)
+    
+    if detected_symptoms:
+        return ' '.join(detected_symptoms)
+    return None
 
 # 30 SYMPTOM CATEGORIES WITH MEDICAL SYNONYMS
 SYMPTOM_SYNONYMS = {
