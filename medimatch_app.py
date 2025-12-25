@@ -249,9 +249,58 @@ SYMPTOM_SYNONYMS = {
     'fatigue': 'fatigue tiredness weakness energy exhaustion lethargy',
 }
 
+# SMART BODY PART + SYMPTOM DETECTION
+SMART_SYMPTOM_MAP = {
+    ('head', 'pain'): 'headache migraine cephalalgia head pain tension headache',
+    ('head', 'paining'): 'headache migraine cephalalgia head pain tension headache',
+    ('head', 'ache'): 'headache migraine cephalalgia head pain tension headache',
+    ('head', 'hurt'): 'headache migraine cephalalgia head pain tension headache',
+    ('sir', 'dard'): 'headache migraine cephalalgia head pain tension headache',
+    ('sar', 'dard'): 'headache migraine cephalalgia head pain tension headache',
+    ('stomach', 'pain'): 'stomach pain gastric abdominal pain gastritis peptic ulcer acidity',
+    ('stomach', 'ache'): 'stomach pain gastric abdominal pain gastritis peptic ulcer acidity',
+    ('pet', 'dard'): 'stomach pain gastric abdominal pain gastritis peptic ulcer acidity',
+    ('tummy', 'ache'): 'stomach pain gastric abdominal pain gastritis peptic ulcer acidity',
+    ('back', 'pain'): 'back pain lumbar backache spinal muscular relaxant',
+    ('kamar', 'dard'): 'back pain lumbar backache spinal muscular relaxant',
+    ('chest', 'pain'): 'chest pain angina cardiac heart antacid',
+    ('throat', 'pain'): 'sore throat pharyngitis tonsillitis strep throat infection',
+    ('gala', 'dard'): 'sore throat pharyngitis tonsillitis strep throat infection',
+    ('knee', 'pain'): 'knee pain joint pain arthritis orthopedic glucosamine',
+    ('ghutna', 'dard'): 'knee pain joint pain arthritis orthopedic glucosamine',
+    ('joint', 'pain'): 'joint pain arthritis rheumatoid orthopedic glucosamine',
+    ('tooth', 'pain'): 'toothache dental pain analgesic antibiotic dental',
+    ('dant', 'dard'): 'toothache dental pain analgesic antibiotic dental',
+    ('eye', 'pain'): 'eye pain conjunctivitis ophthalmic eye drops',
+    ('ear', 'pain'): 'ear pain otitis otic ear drops infection',
+    ('muscle', 'pain'): 'muscle pain myalgia muscular relaxant sprain strain',
+    ('body', 'pain'): 'body pain analgesic painkiller fever viral',
+}
+
+def smart_symptom_detection(user_input):
+    """Detect body part + symptom combinations for precise matching"""
+    query = user_input.lower()
+    detected_symptoms = []
+    
+    for (body_part, symptom), expansion in SMART_SYMPTOM_MAP.items():
+        if body_part in query and symptom in query:
+            detected_symptoms.append(expansion)
+    
+    if detected_symptoms:
+        return ' '.join(detected_symptoms)
+    return None
+
 def expand_symptoms(user_input):
     """Expand user input with medical synonyms for better matching"""
     expanded = user_input.lower()
+    
+    # First try smart detection
+    smart_expansion = smart_symptom_detection(user_input)
+    if smart_expansion:
+        expanded = expanded + ' ' + smart_expansion
+        return expanded
+    
+    # Fallback to keyword-based expansion
     for symptom, synonyms in SYMPTOM_SYNONYMS.items():
         if symptom in expanded:
             expanded = expanded + ' ' + synonyms
@@ -259,7 +308,8 @@ def expand_symptoms(user_input):
 
 # SMART QUERY VALIDATION - Reject non-medical queries
 MEDICAL_KEYWORDS = {
-    'pain', 'ache', 'fever', 'cold', 'cough', 'headache', 'stomach', 'nausea', 'vomiting',
+    'pain', 'paining', 'ache', 'aching', 'hurt', 'hurting', 'dard',
+    'fever', 'cold', 'cough', 'headache', 'stomach', 'nausea', 'vomiting',
     'diarrhea', 'allergy', 'rash', 'infection', 'diabetes', 'sugar', 'blood', 'pressure',
     'heart', 'chest', 'breathing', 'asthma', 'anxiety', 'stress', 'depression', 'sleep',
     'insomnia', 'tired', 'fatigue', 'weakness', 'dizziness', 'vertigo', 'eye', 'ear',
