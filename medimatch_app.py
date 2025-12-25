@@ -1,6 +1,6 @@
 """
 MEDIMATCH ML ENGINE - CureBot Machine Learning Core
-TF-IDF + Cosine Similarity based medicine recommendation system
+Hybrid Search: TF-IDF + Semantic (Sentence Transformers)
 """
 
 import pandas as pd
@@ -12,6 +12,15 @@ import zipfile
 import plotly.graph_objects as go
 import urllib.request
 import json
+
+# Semantic Search with Sentence Transformers
+try:
+    from sentence_transformers import SentenceTransformer
+    SEMANTIC_AVAILABLE = True
+    print("✅ Sentence Transformers loaded")
+except ImportError:
+    SEMANTIC_AVAILABLE = False
+    print("⚠️ Sentence Transformers not available")
 
 # DATA LOADING
 def extract_zip_if_needed(zip_path, extract_to='.'):
@@ -62,6 +71,23 @@ def preprocess_data(df1, df2):
     
     return df1, df2
 
+# HELPER FUNCTIONS (used by search algorithms)
+def get_medicine_uses(medicine):
+    uses = []
+    for i in range(10):
+        use_col = f'use{i}'
+        if use_col in medicine and pd.notna(medicine[use_col]) and medicine[use_col]:
+            uses.append(str(medicine[use_col]))
+    return ', '.join(uses[:5]) if uses else 'General medicine'
+
+def get_side_effects(medicine):
+    effects = []
+    for i in range(5):
+        effect_col = f'sideEffect{i}'
+        if effect_col in medicine and pd.notna(medicine[effect_col]) and medicine[effect_col]:
+            effects.append(str(medicine[effect_col]))
+    return ', '.join(effects[:3]) if effects else 'Consult doctor'
+
 # TF-IDF MODEL
 def train_model(df1):
     """Train TF-IDF: 15K features, n-grams 1-4, sublinear TF, L2 norm"""
@@ -83,6 +109,123 @@ def train_model(df1):
     print(f"✅ TF-IDF Trained: {len(vectorizer.vocabulary_)} vocab, {tfidf_matrix.shape} matrix")
     
     return vectorizer, tfidf_matrix
+
+# SEMANTIC SEARCH - Sentence Transformers
+semantic_model = None
+medicine_embeddings = None
+medicine_indices = None
+
+def load_semantic_model():
+    """Load lightweight sentence transformer: all-MiniLM-L6-v2 (22M params, 80MB)"""
+    global semantic_model
+    if not SEMANTIC_AVAILABLE:
+        print("⚠️ Semantic search not available")
+        return None
+    
+    try:
+        semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
+        print("✅ Semantic Model Loaded: all-MiniLM-L6-v2")
+        return semantic_model
+    except Exception as e:
+        print(f"❌ Semantic model failed: {e}")
+        return None
+
+def create_medicine_embeddings(df1, sample_size=8000):
+    """Create embeddings for medicine uses (sampled for speed)"""
+    global medicine_embeddings, medicine_indices
+    
+    if semantic_model is None or df1 is None:
+        return None, None
+    
+    try:
+        if len(df1) > sample_size:
+            sampled_df = df1.sample(n=sample_size, random_state=42)
+        else:
+            sampled_df = df1
+        
+        medicine_indices = sampled_df.index.tolist()
+        texts = sampled_df['combined_use'].fillna('').astype(str).tolist()
+        
+        print(f"🔄 Creating embeddings for {len(texts)} medicines...")
+        medicine_embeddings = semantic_model.encode(texts, show_progress_bar=True, batch_size=64)
+        print(f"✅ Embeddings created: {medicine_embeddings.shape}")
+        
+        return medicine_embeddings, medicine_indices
+    except Exception as e:
+        print(f"❌ Embedding creation failed: {e}")
+        return None, None
+
+def semantic_search(query, df1, top_n=50):
+    """Semantic similarity search using sentence embeddings"""
+    global medicine_embeddings, medicine_indices
+    
+    if semantic_model is None or medicine_embeddings is None:
+        return []
+    
+    try:
+        expanded_query = expand_symptoms(query)
+        query_embedding = semantic_model.encode([expanded_query])[0]
+        
+        similarities = cosine_similarity([query_embedding], medicine_embeddings).flatten()
+        top_indices = similarities.argsort()[-top_n:][::-1]
+        
+        results = []
+        for idx in top_indices:
+            if similarities[idx] > 0.3:  # Semantic threshold
+                actual_idx = medicine_indices[idx]
+                medicine = df1.iloc[actual_idx]
+                
+                results.append({
+                    'index': actual_idx,
+                    'Medicine Name': medicine.get('name', medicine.get('Medicine Name', 'Unknown')),
+                    'Therapeutic Class': medicine.get('Therapeutic Class', 'General'),
+                    'Uses': get_medicine_uses(medicine),
+                    'Side Effects': get_side_effects(medicine),
+                    'Manufacturer': medicine.get('Manufacturer', 'N/A'),
+                    'Semantic Score': similarities[idx]
+                })
+        
+        return results
+    except Exception as e:
+        print(f"Semantic search error: {e}")
+        return []
+
+def hybrid_search(query, df1, vectorizer, tfidf_matrix, top_n=15):
+    """Hybrid TF-IDF + Semantic search with score boosting"""
+    tfidf_results = search_medicines(query, df1, vectorizer, tfidf_matrix, top_n=100)
+    semantic_results = semantic_search(query, df1, top_n=50)
+    
+    if not semantic_results:
+        return tfidf_results[:top_n]
+    
+    semantic_names = {r['Medicine Name'].lower() for r in semantic_results}
+    
+    boosted_results = []
+    for result in tfidf_results:
+        if result['Medicine Name'].lower() in semantic_names:
+            result['Raw Score'] = result['Raw Score'] * 1.5
+            result['Match Score'] = f"{min(result['Raw Score'] * 100 * 1.5, 99.9):.1f}%"
+            result['Search Type'] = 'Hybrid'
+        else:
+            result['Search Type'] = 'TF-IDF'
+        boosted_results.append(result)
+    
+    for sem_result in semantic_results:
+        if not any(r['Medicine Name'].lower() == sem_result['Medicine Name'].lower() for r in boosted_results):
+            boosted_results.append({
+                'Medicine Name': sem_result['Medicine Name'],
+                'Therapeutic Class': sem_result['Therapeutic Class'],
+                'Action Class': 'N/A',
+                'Uses': sem_result['Uses'],
+                'Side Effects': sem_result['Side Effects'],
+                'Manufacturer': sem_result['Manufacturer'],
+                'Match Score': f"{sem_result['Semantic Score'] * 100:.1f}%",
+                'Raw Score': sem_result['Semantic Score'],
+                'Search Type': 'Semantic'
+            })
+    
+    boosted_results.sort(key=lambda x: x['Raw Score'], reverse=True)
+    return boosted_results[:top_n]
 
 # 30 SYMPTOM CATEGORIES WITH MEDICAL SYNONYMS
 SYMPTOM_SYNONYMS = {
@@ -220,22 +363,6 @@ def search_medicines(query, df1, vectorizer, tfidf_matrix, top_n=15):
             })
     
     return results
-
-def get_medicine_uses(medicine):
-    uses = []
-    for i in range(10):
-        use_col = f'use{i}'
-        if use_col in medicine and pd.notna(medicine[use_col]) and medicine[use_col]:
-            uses.append(str(medicine[use_col]))
-    return ', '.join(uses[:5]) if uses else 'General medicine'
-
-def get_side_effects(medicine):
-    effects = []
-    for i in range(5):
-        effect_col = f'sideEffect{i}'
-        if effect_col in medicine and pd.notna(medicine[effect_col]) and medicine[effect_col]:
-            effects.append(str(medicine[effect_col]))
-    return ', '.join(effects[:3]) if effects else 'Consult doctor'
 
 # DISEASE ANALYTICS
 DISEASE_STATS = {

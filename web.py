@@ -15,6 +15,15 @@ from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
 
+# Semantic Search with Sentence Transformers
+try:
+    from sentence_transformers import SentenceTransformer
+    SEMANTIC_AVAILABLE = True
+    print("✅ Sentence Transformers loaded successfully")
+except ImportError:
+    SEMANTIC_AVAILABLE = False
+    print("⚠️ Sentence Transformers not available, using TF-IDF only")
+
 # =============================================================================
 # APP BRANDING & CONFIGURATION
 # =============================================================================
@@ -261,6 +270,78 @@ def train_model(df1):
     tfidf_matrix = vectorizer.fit_transform(df1['combined_use'].astype(str))
     return vectorizer, tfidf_matrix
 
+# SEMANTIC SEARCH - Sentence Transformers
+semantic_model = None
+medicine_embeddings = None
+
+def load_semantic_model():
+    """Load lightweight semantic search model"""
+    global semantic_model
+    if not SEMANTIC_AVAILABLE:
+        return None
+    try:
+        # Using all-MiniLM-L6-v2 - fast & accurate (22M params, 80MB)
+        print("🔄 Loading semantic search model...")
+        semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
+        print("✅ Semantic model loaded: all-MiniLM-L6-v2")
+        return semantic_model
+    except Exception as e:
+        print(f"⚠️ Semantic model failed: {e}")
+        return None
+
+def create_medicine_embeddings(df1, sample_size=5000):
+    """Create embeddings for medicine uses (sampled for speed)"""
+    global medicine_embeddings
+    if semantic_model is None or df1 is None:
+        return None
+    
+    try:
+        print(f"🔄 Creating medicine embeddings (sampling {sample_size} of {len(df1)})...")
+        
+        # Sample for faster processing
+        if len(df1) > sample_size:
+            sample_indices = np.random.choice(len(df1), sample_size, replace=False)
+            texts = df1.iloc[sample_indices]['combined_use'].astype(str).tolist()
+        else:
+            sample_indices = np.arange(len(df1))
+            texts = df1['combined_use'].astype(str).tolist()
+        
+        # Batch encode for speed
+        embeddings = semantic_model.encode(texts, batch_size=64, show_progress_bar=False)
+        medicine_embeddings = {'embeddings': embeddings, 'indices': sample_indices}
+        
+        print(f"✅ Created {len(embeddings)} medicine embeddings")
+        return medicine_embeddings
+    except Exception as e:
+        print(f"⚠️ Embedding creation failed: {e}")
+        return None
+
+def semantic_search(query, df1, top_n=50):
+    """Semantic search using sentence embeddings"""
+    if semantic_model is None or medicine_embeddings is None:
+        return pd.DataFrame()
+    
+    try:
+        # Encode query
+        query_embedding = semantic_model.encode([query.lower()])
+        
+        # Compute similarities
+        similarities = cosine_similarity(query_embedding, medicine_embeddings['embeddings']).flatten()
+        
+        # Get top matches
+        top_indices = similarities.argsort()[-top_n:][::-1]
+        
+        # Map back to original dataframe indices
+        original_indices = medicine_embeddings['indices'][top_indices]
+        scores = similarities[top_indices]
+        
+        # Filter by threshold
+        valid = scores > 0.25
+        return df1.iloc[original_indices[valid]]
+    except Exception as e:
+        print(f"Semantic search error: {e}")
+        return pd.DataFrame()
+
 # Enhanced Symptom Synonyms for smarter matching
 SYMPTOM_SYNONYMS = {
     'headache': 'headache head pain migraine cephalalgia tension headache cluster headache sinus headache',
@@ -384,6 +465,17 @@ if df1 is not None and df2 is not None:
     print(f"   - Dataset 1: {len(df1):,} medicines")
     print(f"   - Dataset 2: {len(df2):,} inventory items")
     print(f"   - Model: Advanced TF-IDF (n-grams 1-4) + {len(SYMPTOM_SYNONYMS)} symptom categories")
+    
+    # Load Semantic Search Model
+    if SEMANTIC_AVAILABLE:
+        load_semantic_model()
+        if semantic_model is not None:
+            create_medicine_embeddings(df1, sample_size=8000)
+            print("   - Semantic Search: ✅ Enabled (all-MiniLM-L6-v2)")
+        else:
+            print("   - Semantic Search: ❌ Disabled")
+    else:
+        print("   - Semantic Search: ❌ Not installed")
 else:
     vectorizer, tfidf_matrix = None, None
     DATA_LOADED = False
@@ -394,33 +486,51 @@ else:
 # =============================================================================
 
 def get_recommendations(user_input):
-    """Enhanced recommendation with smart matching"""
+    """Hybrid recommendation: TF-IDF + Semantic Search"""
     if not DATA_LOADED:
         return pd.DataFrame()
     
     # Expand input with synonyms
     expanded_input = expand_symptoms(user_input)
     
+    # 1. TF-IDF Search
     user_vec = vectorizer.transform([expanded_input])
     cosine_sim = cosine_similarity(user_vec, tfidf_matrix).flatten()
+    tfidf_indices = cosine_sim.argsort()[-100:][::-1]
+    tfidf_scores = {i: cosine_sim[i] for i in tfidf_indices if cosine_sim[i] > 0.02}
     
-    # Get top matches
-    indices = cosine_sim.argsort()[-150:][::-1]
+    # 2. Semantic Search (if available)
+    semantic_indices = set()
+    if semantic_model is not None and medicine_embeddings is not None:
+        try:
+            query_embedding = semantic_model.encode([user_input.lower()])
+            similarities = cosine_similarity(query_embedding, medicine_embeddings['embeddings']).flatten()
+            top_sem_indices = similarities.argsort()[-50:][::-1]
+            
+            for idx in top_sem_indices:
+                if similarities[idx] > 0.3:
+                    original_idx = medicine_embeddings['indices'][idx]
+                    semantic_indices.add(original_idx)
+                    # Boost score if also in TF-IDF
+                    if original_idx in tfidf_scores:
+                        tfidf_scores[original_idx] *= 1.5  # Boost hybrid matches
+                    else:
+                        tfidf_scores[original_idx] = similarities[idx] * 0.8
+        except Exception as e:
+            print(f"Semantic search fallback: {e}")
     
-    # Dynamic threshold based on query complexity
+    # 3. Combine and rank
+    all_indices = sorted(tfidf_scores.keys(), key=lambda x: tfidf_scores[x], reverse=True)
+    
+    # Dynamic threshold
     word_count = len(user_input.split())
-    if word_count <= 1:
-        threshold = 0.03
-    elif word_count <= 3:
-        threshold = 0.05
-    else:
-        threshold = 0.07
+    threshold = 0.03 if word_count <= 1 else 0.05 if word_count <= 3 else 0.07
     
-    relevant_indices = [i for i in indices if cosine_sim[i] > threshold]
+    relevant_indices = [i for i in all_indices if tfidf_scores[i] > threshold][:150]
     
-    # Fallback to top results
-    if not relevant_indices and len(indices) > 0:
-        relevant_indices = indices[:25]
+    # Fallback
+    if not relevant_indices and all_indices:
+        relevant_indices = all_indices[:25]
     
     return df1.iloc[relevant_indices]
 
