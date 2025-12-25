@@ -3166,78 +3166,105 @@ app.clientside_callback(
 app.clientside_callback(
     """
     function(n_clicks) {
-        if (n_clicks > 0) {
-            try {
-                var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                if (!SpeechRecognition) {
-                    alert('Speech recognition not supported. Use Chrome, Edge, or Safari.');
-                    return "";
-                }
-                
-                var recognition = new SpeechRecognition();
-                recognition.lang = navigator.language || 'en-US';
-                recognition.interimResults = false;
-                recognition.continuous = false;
-                recognition.maxAlternatives = 1;
-                
-                var voiceBtn = document.getElementById('voice-btn');
-                var inputField = document.getElementById('user-input');
-                
-                if (!voiceBtn || !inputField) {
-                    console.error('Voice elements not found');
-                    return "";
-                }
-                
-                voiceBtn.style.background = 'linear-gradient(135deg, #D32F2F 0%, #F44336 100%)';
-                voiceBtn.innerHTML = '🔴';
-                
-                recognition.start();
-                console.log('🎤 Speech recognition started');
-                
-                recognition.onresult = function(event) {
+        if (!n_clicks || n_clicks === 0) return "";
+        
+        var voiceBtn = document.getElementById('voice-btn');
+        var inputField = document.getElementById('user-input');
+        
+        if (!voiceBtn || !inputField) {
+            console.error('Elements not found');
+            return "";
+        }
+        
+        var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert('🎤 Speech recognition not supported. Please use Chrome, Edge, or Safari browser.');
+            return "";
+        }
+        
+        try {
+            var recognition = new SpeechRecognition();
+            
+            recognition.lang = 'en-IN';
+            recognition.interimResults = false;
+            recognition.continuous = false;
+            recognition.maxAlternatives = 1;
+            
+            voiceBtn.disabled = true;
+            voiceBtn.style.background = 'linear-gradient(135deg, #D32F2F 0%, #F44336 100%)';
+            voiceBtn.innerHTML = '🔴';
+            voiceBtn.style.transform = 'scale(1.1)';
+            
+            recognition.start();
+            
+            recognition.onresult = function(event) {
+                if (event.results && event.results.length > 0) {
                     var transcript = event.results[0][0].transcript;
-                    console.log('🎤 Recognized:', transcript);
                     
                     inputField.value = transcript;
-                    inputField.focus();
                     
-                    var inputEvent = new Event('input', { bubbles: true, cancelable: true });
-                    inputField.dispatchEvent(inputEvent);
-                    
-                    var changeEvent = new Event('change', { bubbles: true, cancelable: true });
-                    inputField.dispatchEvent(changeEvent);
-                };
-                
-                recognition.onend = function() {
-                    voiceBtn.style.background = 'linear-gradient(135deg, #7B1FA2 0%, #9C27B0 100%)';
-                    voiceBtn.innerHTML = '🎤';
-                    
-                    if (inputField.value && inputField.value.trim()) {
-                        setTimeout(function() {
-                            var sendBtn = document.getElementById('send-btn');
-                            if (sendBtn) sendBtn.click();
-                        }, 300);
+                    try {
+                        var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+                        nativeInputValueSetter.call(inputField, transcript);
+                        
+                        var ev1 = new Event('input', { bubbles: true });
+                        inputField.dispatchEvent(ev1);
+                        
+                        var ev2 = new Event('change', { bubbles: true });
+                        inputField.dispatchEvent(ev2);
+                    } catch (e) {
+                        console.error('Event dispatch error:', e);
                     }
-                };
+                }
+            };
+            
+            recognition.onend = function() {
+                voiceBtn.disabled = false;
+                voiceBtn.style.background = 'linear-gradient(135deg, #7B1FA2 0%, #9C27B0 100%)';
+                voiceBtn.innerHTML = '🎤';
+                voiceBtn.style.transform = 'scale(1)';
                 
-                recognition.onerror = function(event) {
-                    console.error('Speech error:', event.error);
-                    voiceBtn.style.background = 'linear-gradient(135deg, #7B1FA2 0%, #9C27B0 100%)';
-                    voiceBtn.innerHTML = '🎤';
-                    
-                    if (event.error === 'no-speech') {
-                        alert('No speech detected. Please try again.');
-                    } else if (event.error === 'not-allowed') {
-                        alert('Microphone access denied. Please allow microphone in browser settings.');
-                    } else if (event.error === 'network') {
-                        alert('Network error. Check your internet connection.');
-                    }
-                };
-            } catch (e) {
-                console.error('Speech recognition error:', e);
-                alert('Speech recognition failed. Please try again.');
-            }
+                if (inputField.value && inputField.value.trim().length > 0) {
+                    setTimeout(function() {
+                        var sendBtn = document.getElementById('send-btn');
+                        if (sendBtn) {
+                            sendBtn.click();
+                        }
+                    }, 200);
+                }
+            };
+            
+            recognition.onerror = function(event) {
+                voiceBtn.disabled = false;
+                voiceBtn.style.background = 'linear-gradient(135deg, #7B1FA2 0%, #9C27B0 100%)';
+                voiceBtn.innerHTML = '🎤';
+                voiceBtn.style.transform = 'scale(1)';
+                
+                console.error('Speech error:', event.error);
+                
+                if (event.error === 'no-speech') {
+                    alert('🎤 No speech detected. Please speak clearly and try again.');
+                } else if (event.error === 'not-allowed' || event.error === 'permission-denied') {
+                    alert('🎤 Microphone permission denied.\\n\\nPlease:\\n1. Click the 🔒 lock icon in address bar\\n2. Allow microphone access\\n3. Refresh page');
+                } else if (event.error === 'network') {
+                    alert('🎤 Network error. Check your internet connection.');
+                } else if (event.error === 'aborted') {
+                    console.log('Speech recognition aborted');
+                } else {
+                    alert('🎤 Error: ' + event.error);
+                }
+            };
+            
+        } catch (error) {
+            voiceBtn.disabled = false;
+            voiceBtn.style.background = 'linear-gradient(135deg, #7B1FA2 0%, #9C27B0 100%)';
+            voiceBtn.innerHTML = '🎤';
+            voiceBtn.style.transform = 'scale(1)';
+            
+            console.error('Recognition error:', error);
+            alert('Speech recognition failed: ' + error.message);
         }
+        
         return "";
     }
     """,
