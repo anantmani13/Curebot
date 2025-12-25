@@ -1550,29 +1550,54 @@ app.index_string = f'''
                 document.getElementById('login-page').style.display = 'flex';
                 document.getElementById('main-app').style.display = 'none';
                 
-                // Clear Google session
-                google.accounts.id.disableAutoSelect();
+                // Clear Google session if available
+                if (typeof google !== 'undefined' && google.accounts) {{
+                    google.accounts.id.disableAutoSelect();
+                }}
             }}
             
-            // Initialize Google Sign-In
+            // Initialize Google Sign-In with error handling
             window.onload = function() {{
-                google.accounts.id.initialize({{
-                    client_id: '{GOOGLE_CLIENT_ID}',
-                    callback: handleCredentialResponse
-                }});
-                
-                // Render the Google Sign-In button
-                google.accounts.id.renderButton(
-                    document.getElementById('google-signin-btn'),
-                    {{ 
-                        theme: 'outline', 
-                        size: 'large',
-                        shape: 'pill',
-                        text: 'signin_with',
-                        logo_alignment: 'center',
-                        width: 280
+                try {{
+                    if (typeof google !== 'undefined' && google.accounts) {{
+                        google.accounts.id.initialize({{
+                            client_id: '{GOOGLE_CLIENT_ID}',
+                            callback: handleCredentialResponse
+                        }});
+                        
+                        // Render the Google Sign-In button
+                        google.accounts.id.renderButton(
+                            document.getElementById('google-signin-btn'),
+                            {{ 
+                                theme: 'outline', 
+                                size: 'large',
+                                shape: 'pill',
+                                text: 'signin_with',
+                                logo_alignment: 'center',
+                                width: 280
+                            }}
+                        );
+                    }} else {{
+                        // Google library not loaded, show fallback
+                        console.log('Google Sign-In not available, showing fallback');
+                        var fallbackBtn = document.getElementById('fallback-google-btn');
+                        if (fallbackBtn) {{
+                            fallbackBtn.style.display = 'flex';
+                            fallbackBtn.onclick = function() {{
+                                skipLogin();
+                            }};
+                        }}
                     }}
-                );
+                }} catch(e) {{
+                    console.log('Google Sign-In error:', e);
+                    var fallbackBtn = document.getElementById('fallback-google-btn');
+                    if (fallbackBtn) {{
+                        fallbackBtn.style.display = 'flex';
+                        fallbackBtn.onclick = function() {{
+                            skipLogin();
+                        }};
+                    }}
+                }}
             }};
             
             // ==================== EMERGENCY MODE ====================
@@ -1818,9 +1843,21 @@ app.layout = html.Div([
             html.H1(APP_NAME, className='login-title'),
             html.P(APP_TAGLINE, className='login-subtitle'),
             
-            # Google Sign-In Button
+            # Google Sign-In Button Container
             html.Div(className='google-btn-container', children=[
-                html.Div(id='google-signin-btn')
+                html.Div(id='google-signin-btn', style={'minHeight': '44px'}),
+                # Fallback button if Google fails to load
+                html.Button([
+                    html.Img(src='https://developers.google.com/identity/images/g-logo.png', 
+                            style={'width': '20px', 'height': '20px', 'marginRight': '10px'}),
+                    "Sign in with Google"
+                ], id='fallback-google-btn', n_clicks=0, style={
+                    'display': 'none',  # Hidden by default, shown by JS if Google fails
+                    'background': 'white', 'border': '1px solid #ddd', 'borderRadius': '25px',
+                    'padding': '12px 25px', 'fontSize': '14px', 'fontWeight': '500',
+                    'cursor': 'pointer', 'alignItems': 'center', 'justifyContent': 'center',
+                    'color': '#444', 'marginTop': '10px'
+                })
             ]),
             
             # Divider
@@ -2112,8 +2149,7 @@ app.clientside_callback(
 @app.callback(
     [Output('chat-history', 'children'),
      Output('store-conversation', 'data'),
-     Output('user-input', 'value'),
-     Output('main-container', 'style')],
+     Output('user-input', 'value')],
     [Input('send-btn', 'n_clicks'),
      Input('user-input', 'n_submit')] + 
     [Input(f'btn-{id_name}', 'n_clicks') for id_name in [
@@ -2121,7 +2157,8 @@ app.clientside_callback(
         'sleep', 'allergy', 'diabetes', 'bp', 'acidity', 'skin', 'vitamin', 'anxiety'
     ]],
     [State('user-input', 'value'),
-     State('store-conversation', 'data')]
+     State('store-conversation', 'data')],
+    prevent_initial_call=True
 )
 def update_chat(n_clicks, n_submit, *args):
     # Get button clicks and states
@@ -2130,7 +2167,7 @@ def update_chat(n_clicks, n_submit, *args):
     
     ctx = callback_context
     if not ctx.triggered:
-        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+        return dash.no_update, dash.no_update, dash.no_update
 
     trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
     
@@ -2162,7 +2199,7 @@ def update_chat(n_clicks, n_submit, *args):
         display_text, final_text = symptom_map[trigger_id]
     
     if not final_text:
-        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+        return dash.no_update, dash.no_update, dash.no_update
 
     # Emergency check
     emergency_keywords = ["heart attack", "stroke", "chest pain", "breathing difficulty", 
@@ -2362,7 +2399,7 @@ def update_chat(n_clicks, n_submit, *args):
                         'boxShadow': '0 4px 15px rgba(66,133,244,0.15)'
                     }))
 
-    return chat_bubbles, conversation, "", page_style
+    return chat_bubbles, conversation, ""
 
 # =============================================================================
 # 7. RUN THE APP
