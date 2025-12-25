@@ -69,8 +69,8 @@ def get_gemini_health_advice(symptom, medicines):
         
         Keep response under 100 words. Be professional and caring."""
         
-        # Gemini API request
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
+        # Gemini API request (using gemini-2.0-flash model)
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
         
         data = json.dumps({
             "contents": [{"parts": [{"text": prompt}]}],
@@ -1557,47 +1557,73 @@ app.index_string = f'''
             }}
             
             // Initialize Google Sign-In with error handling
-            window.onload = function() {{
+            function initGoogleSignIn() {{
                 try {{
-                    if (typeof google !== 'undefined' && google.accounts) {{
+                    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {{
                         google.accounts.id.initialize({{
                             client_id: '{GOOGLE_CLIENT_ID}',
                             callback: handleCredentialResponse
                         }});
                         
                         // Render the Google Sign-In button
-                        google.accounts.id.renderButton(
-                            document.getElementById('google-signin-btn'),
-                            {{ 
-                                theme: 'outline', 
-                                size: 'large',
-                                shape: 'pill',
-                                text: 'signin_with',
-                                logo_alignment: 'center',
-                                width: 280
-                            }}
-                        );
-                    }} else {{
-                        // Google library not loaded, show fallback
-                        console.log('Google Sign-In not available, showing fallback');
-                        var fallbackBtn = document.getElementById('fallback-google-btn');
-                        if (fallbackBtn) {{
-                            fallbackBtn.style.display = 'flex';
-                            fallbackBtn.onclick = function() {{
-                                skipLogin();
-                            }};
+                        var btnContainer = document.getElementById('google-signin-btn');
+                        if (btnContainer) {{
+                            google.accounts.id.renderButton(
+                                btnContainer,
+                                {{ 
+                                    theme: 'outline', 
+                                    size: 'large',
+                                    shape: 'pill',
+                                    text: 'signin_with',
+                                    logo_alignment: 'center',
+                                    width: 280
+                                }}
+                            );
                         }}
+                        console.log('Google Sign-In initialized successfully');
+                    }} else {{
+                        throw new Error('Google library not loaded');
                     }}
                 }} catch(e) {{
-                    console.log('Google Sign-In error:', e);
-                    var fallbackBtn = document.getElementById('fallback-google-btn');
-                    if (fallbackBtn) {{
-                        fallbackBtn.style.display = 'flex';
-                        fallbackBtn.onclick = function() {{
-                            skipLogin();
-                        }};
-                    }}
+                    console.log('Google Sign-In init error:', e);
+                    showFallbackButton();
                 }}
+            }}
+            
+            function showFallbackButton() {{
+                var fallbackBtn = document.getElementById('fallback-google-btn');
+                if (fallbackBtn) {{
+                    fallbackBtn.style.display = 'flex';
+                }}
+            }}
+            
+            // Try to initialize Google Sign-In multiple times
+            window.onload = function() {{
+                // Check for saved user
+                var savedUser = localStorage.getItem('curebot_user');
+                if (savedUser) {{
+                    try {{
+                        showMainApp(JSON.parse(savedUser));
+                        return;
+                    }} catch(e) {{}}
+                }}
+                
+                // Try immediate init
+                setTimeout(initGoogleSignIn, 500);
+                // Retry after 2 seconds if failed
+                setTimeout(function() {{
+                    var btn = document.getElementById('google-signin-btn');
+                    if (btn && btn.children.length === 0) {{
+                        initGoogleSignIn();
+                    }}
+                }}, 2000);
+                // Final fallback after 4 seconds
+                setTimeout(function() {{
+                    var btn = document.getElementById('google-signin-btn');
+                    if (btn && btn.children.length === 0) {{
+                        showFallbackButton();
+                    }}
+                }}, 4000);
             }};
             
             // ==================== EMERGENCY MODE ====================
@@ -1850,13 +1876,14 @@ app.layout = html.Div([
                 html.Button([
                     html.Img(src='https://developers.google.com/identity/images/g-logo.png', 
                             style={'width': '20px', 'height': '20px', 'marginRight': '10px'}),
-                    "Sign in with Google"
-                ], id='fallback-google-btn', n_clicks=0, style={
+                    "Continue with Google"
+                ], id='fallback-google-btn', n_clicks=0, className='fallback-google-btn', style={
                     'display': 'none',  # Hidden by default, shown by JS if Google fails
-                    'background': 'white', 'border': '1px solid #ddd', 'borderRadius': '25px',
-                    'padding': '12px 25px', 'fontSize': '14px', 'fontWeight': '500',
+                    'background': 'white', 'border': '2px solid #4285F4', 'borderRadius': '25px',
+                    'padding': '12px 25px', 'fontSize': '15px', 'fontWeight': '600',
                     'cursor': 'pointer', 'alignItems': 'center', 'justifyContent': 'center',
-                    'color': '#444', 'marginTop': '10px'
+                    'color': '#4285F4', 'marginTop': '10px', 'width': '280px',
+                    'boxShadow': '0 2px 10px rgba(66,133,244,0.3)', 'transition': 'all 0.3s ease'
                 })
             ]),
             
@@ -2078,6 +2105,7 @@ app.layout = html.Div([
     html.Div(id='dummy-scroll-trigger', style={'display': 'none'}),
     html.Div(id='pharmacy-trigger', style={'display': 'none'}),
     html.Div(id='skip-login-trigger', style={'display': 'none'}),
+    html.Div(id='fallback-google-trigger', style={'display': 'none'}),
     html.Div(id='emergency-trigger', style={'display': 'none'})
 
 ])
@@ -2129,6 +2157,20 @@ app.clientside_callback(
     """,
     Output('skip-login-trigger', 'children'),
     Input('skip-login-btn', 'n_clicks')
+)
+
+# Fallback Google Button - Acts as Skip Login when Google fails
+app.clientside_callback(
+    """
+    function(n_clicks) {
+        if (n_clicks > 0) {
+            skipLogin();
+        }
+        return "";
+    }
+    """,
+    Output('fallback-google-trigger', 'children'),
+    Input('fallback-google-btn', 'n_clicks')
 )
 
 # Emergency Mode - Opens Emergency Modal
