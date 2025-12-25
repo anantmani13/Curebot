@@ -126,6 +126,71 @@ def expand_symptoms(user_input):
             expanded = expanded + ' ' + synonyms
     return expanded
 
+# SMART QUERY VALIDATION - Reject non-medical queries
+MEDICAL_KEYWORDS = {
+    'pain', 'ache', 'fever', 'cold', 'cough', 'headache', 'stomach', 'nausea', 'vomiting',
+    'diarrhea', 'allergy', 'rash', 'infection', 'diabetes', 'sugar', 'blood', 'pressure',
+    'heart', 'chest', 'breathing', 'asthma', 'anxiety', 'stress', 'depression', 'sleep',
+    'insomnia', 'tired', 'fatigue', 'weakness', 'dizziness', 'vertigo', 'eye', 'ear',
+    'throat', 'skin', 'joint', 'muscle', 'back', 'knee', 'leg', 'arm', 'neck', 'shoulder',
+    'vitamin', 'supplement', 'tablet', 'medicine', 'drug', 'capsule', 'syrup', 'injection',
+    'antibiotic', 'painkiller', 'treatment', 'cure', 'remedy', 'health', 'medical', 'doctor',
+    'hospital', 'disease', 'illness', 'symptom', 'sickness', 'flu', 'viral', 'bacterial',
+    'fungal', 'wound', 'injury', 'burn', 'cut', 'swelling', 'inflammation', 'cramp',
+    'migraine', 'acidity', 'gas', 'bloating', 'constipation', 'digestion', 'liver', 'kidney',
+    'thyroid', 'cholesterol', 'weight', 'obesity', 'pregnancy', 'periods', 'menstrual',
+    'bone', 'fracture', 'sprain', 'arthritis', 'cancer', 'tumor', 'ulcer', 'hernia',
+    'piles', 'hemorrhoids', 'urinary', 'prostate', 'sexual', 'hormonal', 'immunity',
+    'covid', 'corona', 'malaria', 'dengue', 'typhoid', 'jaundice', 'hepatitis', 'tb',
+    'tuberculosis', 'hiv', 'aids', 'epilepsy', 'seizure', 'paralysis', 'stroke', 'bp',
+    'insulin', 'glucose', 'hemoglobin', 'platelet', 'wbc', 'rbc', 'uric',
+    'paracetamol', 'ibuprofen', 'aspirin', 'crocin', 'dolo', 'combiflam', 'calpol',
+    'azithromycin', 'amoxicillin', 'cetirizine', 'montair', 'pantoprazole', 'omeprazole',
+    'metformin', 'amlodipine', 'atorvastatin', 'losartan', 'telmisartan',
+    'zinc', 'iron', 'calcium', 'b12', 'd3', 'folic', 'biotin', 'omega', 'protein',
+    'dard', 'bukhar', 'khansi', 'zukam', 'sir', 'pet', 'kamar', 'ghutna', 'gala',
+    'aankh', 'kaan', 'dant', 'tooth', 'dental', 'oral', 'mouth', 'gum', 'tongue'
+}
+
+NON_MEDICAL_PATTERNS = [
+    'hi', 'hello', 'hey', 'bye', 'thanks', 'thank', 'ok', 'okay', 'yes', 'no', 'please',
+    'help', 'what', 'how', 'why', 'when', 'where', 'who', 'which', 'can', 'could', 'would',
+    'padhai', 'study', 'exam', 'school', 'college', 'job', 'work', 'money', 'salary',
+    'weather', 'time', 'date', 'day', 'movie', 'song', 'music', 'game', 'play', 'food',
+    'recipe', 'cook', 'travel', 'hotel', 'flight', 'train', 'bus', 'car', 'bike',
+    'phone', 'laptop', 'computer', 'internet', 'wifi', 'app', 'website', 'download',
+    'love', 'relationship', 'friend', 'family', 'marriage', 'wedding', 'party',
+    'news', 'politics', 'sports', 'cricket', 'football', 'ipl', 'match',
+    'good', 'bad', 'nice', 'great', 'awesome', 'cool', 'hot', 'beautiful',
+    'kaise', 'kya', 'kab', 'kahan', 'kaun', 'kyun', 'accha', 'theek', 'sahi',
+    'padhai nhi', 'bore', 'boring', 'lonely', 'sad', 'happy', 'angry', 'hungry',
+    'thirsty', 'sleepy', 'lazy', 'busy', 'free', 'available'
+]
+
+def is_medical_query(user_input):
+    """Check if query is medical-related"""
+    query = user_input.lower().strip()
+    
+    if len(query) < 3:
+        return False, "Please describe your health concern in more detail."
+    
+    query_words = query.split()
+    if len(query_words) <= 2:
+        for pattern in NON_MEDICAL_PATTERNS:
+            if pattern in query:
+                return False, "I'm CureBot, a medicine recommendation assistant. Please describe your health symptoms or medical concerns."
+    
+    has_medical_keyword = False
+    for keyword in MEDICAL_KEYWORDS:
+        if keyword in query:
+            has_medical_keyword = True
+            break
+    
+    if not has_medical_keyword and len(query_words) <= 3:
+        return False, "I can only help with health and medicine related queries. Please describe symptoms like 'headache', 'fever', 'stomach pain', etc."
+    
+    return True, None
+
 # CORE SEARCH ALGORITHM
 def search_medicines(query, df1, vectorizer, tfidf_matrix, top_n=15):
     """TF-IDF + Cosine Similarity search with synonym expansion"""
@@ -335,10 +400,21 @@ def initialize_model():
     return DATA_LOADED
 
 def get_recommendations(user_input, top_n=15):
-    """High-level API to get medicine recommendations"""
+    """High-level API to get medicine recommendations with smart validation"""
     if not DATA_LOADED:
-        return []
-    return search_medicines(user_input, df1, vectorizer, tfidf_matrix, top_n)
+        return [], "System not initialized. Please try again."
+    
+    # Smart validation - reject non-medical queries
+    is_valid, error_msg = is_medical_query(user_input)
+    if not is_valid:
+        return [], error_msg
+    
+    results = search_medicines(user_input, df1, vectorizer, tfidf_matrix, top_n)
+    
+    if not results:
+        return [], "No medicines found. Try describing your symptoms differently."
+    
+    return results, None
 
 # TEST
 if __name__ == '__main__':

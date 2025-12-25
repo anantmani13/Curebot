@@ -303,76 +303,6 @@ def expand_symptoms(user_input):
             expanded = expanded + ' ' + synonyms
     return expanded
 
-# SMART QUERY VALIDATION - Reject non-medical queries
-MEDICAL_KEYWORDS = {
-    'pain', 'ache', 'fever', 'cold', 'cough', 'headache', 'stomach', 'nausea', 'vomiting',
-    'diarrhea', 'allergy', 'rash', 'infection', 'diabetes', 'sugar', 'blood', 'pressure',
-    'heart', 'chest', 'breathing', 'asthma', 'anxiety', 'stress', 'depression', 'sleep',
-    'insomnia', 'tired', 'fatigue', 'weakness', 'dizziness', 'vertigo', 'eye', 'ear',
-    'throat', 'skin', 'joint', 'muscle', 'back', 'knee', 'leg', 'arm', 'neck', 'shoulder',
-    'vitamin', 'supplement', 'tablet', 'medicine', 'drug', 'capsule', 'syrup', 'injection',
-    'antibiotic', 'painkiller', 'treatment', 'cure', 'remedy', 'health', 'medical', 'doctor',
-    'hospital', 'disease', 'illness', 'symptom', 'sickness', 'flu', 'viral', 'bacterial',
-    'fungal', 'wound', 'injury', 'burn', 'cut', 'swelling', 'inflammation', 'cramp',
-    'migraine', 'acidity', 'gas', 'bloating', 'constipation', 'digestion', 'liver', 'kidney',
-    'thyroid', 'cholesterol', 'weight', 'obesity', 'pregnancy', 'periods', 'menstrual',
-    'bone', 'fracture', 'sprain', 'arthritis', 'cancer', 'tumor', 'ulcer', 'hernia',
-    'piles', 'hemorrhoids', 'urinary', 'prostate', 'sexual', 'hormonal', 'immunity',
-    'covid', 'corona', 'malaria', 'dengue', 'typhoid', 'jaundice', 'hepatitis', 'tb',
-    'tuberculosis', 'hiv', 'aids', 'epilepsy', 'seizure', 'paralysis', 'stroke', 'bp',
-    'sugar', 'insulin', 'glucose', 'hemoglobin', 'platelet', 'wbc', 'rbc', 'uric',
-    'creatinine', 'bilirubin', 'sgpt', 'sgot', 'ecg', 'xray', 'scan', 'mri', 'ct',
-    'paracetamol', 'ibuprofen', 'aspirin', 'crocin', 'dolo', 'combiflam', 'calpol',
-    'azithromycin', 'amoxicillin', 'cetirizine', 'montair', 'pantoprazole', 'omeprazole',
-    'metformin', 'amlodipine', 'atorvastatin', 'losartan', 'telmisartan', 'vitamin',
-    'zinc', 'iron', 'calcium', 'b12', 'd3', 'folic', 'biotin', 'omega', 'protein',
-    # Hindi/common terms
-    'dard', 'bukhar', 'khansi', 'zukam', 'sir', 'pet', 'kamar', 'ghutna', 'gala',
-    'aankh', 'kaan', 'dant', 'tooth', 'dental', 'oral', 'mouth', 'gum', 'tongue'
-}
-
-NON_MEDICAL_PATTERNS = [
-    'hi', 'hello', 'hey', 'bye', 'thanks', 'thank', 'ok', 'okay', 'yes', 'no', 'please',
-    'help', 'what', 'how', 'why', 'when', 'where', 'who', 'which', 'can', 'could', 'would',
-    'padhai', 'study', 'exam', 'school', 'college', 'job', 'work', 'money', 'salary',
-    'weather', 'time', 'date', 'day', 'movie', 'song', 'music', 'game', 'play', 'food',
-    'recipe', 'cook', 'travel', 'hotel', 'flight', 'train', 'bus', 'car', 'bike',
-    'phone', 'laptop', 'computer', 'internet', 'wifi', 'app', 'website', 'download',
-    'love', 'relationship', 'friend', 'family', 'marriage', 'wedding', 'party',
-    'news', 'politics', 'sports', 'cricket', 'football', 'ipl', 'match',
-    'good', 'bad', 'nice', 'great', 'awesome', 'cool', 'hot', 'beautiful',
-    'kaise', 'kya', 'kab', 'kahan', 'kaun', 'kyun', 'accha', 'theek', 'sahi',
-    'padhai nhi', 'bore', 'boring', 'lonely', 'sad', 'happy', 'angry', 'hungry',
-    'thirsty', 'sleepy', 'lazy', 'busy', 'free', 'available'
-]
-
-def is_medical_query(user_input):
-    """Check if query is medical-related"""
-    query = user_input.lower().strip()
-    
-    # Too short queries
-    if len(query) < 3:
-        return False, "Please describe your health concern in more detail."
-    
-    # Check for greetings/non-medical patterns
-    query_words = query.split()
-    if len(query_words) <= 2:
-        for pattern in NON_MEDICAL_PATTERNS:
-            if pattern in query:
-                return False, "I'm CureBot, a medicine recommendation assistant. Please describe your health symptoms or medical concerns, and I'll help find suitable medicines."
-    
-    # Check for medical keywords
-    has_medical_keyword = False
-    for keyword in MEDICAL_KEYWORDS:
-        if keyword in query:
-            has_medical_keyword = True
-            break
-    
-    if not has_medical_keyword and len(query_words) <= 3:
-        return False, "I can only help with health and medicine related queries. Please describe your symptoms like 'headache', 'fever', 'stomach pain', etc."
-    
-    return True, None
-
 # --- Initialize Data Globally ---
 print(f"🚀 Initializing {APP_NAME} v{APP_VERSION}...")
 df1, df2 = load_data()
@@ -486,26 +416,18 @@ def get_medicine_details(candidates_df1, df2):
     return unique_medicines
 
 def get_ai_recommendation(user_input):
-    """Main ML function with smart query validation"""
+    """Main ML function with enhanced processing"""
     if not DATA_LOADED:
-        return [], None
-    
-    # Smart validation - reject non-medical queries
-    is_valid, error_msg = is_medical_query(user_input)
-    if not is_valid:
-        return [], error_msg
+        return []
     
     candidates = get_recommendations(user_input)
     
     if candidates.empty:
-        return [], "No medicines found for your query. Try describing your symptoms differently."
+        return []
     
     valid_medicines = get_medicine_details(candidates, df2)
     
-    if not valid_medicines:
-        return [], "No matching medicines found. Please describe your symptoms more specifically."
-    
-    return valid_medicines, None
+    return valid_medicines
 
 # =============================================================================
 # 3. DASH APP SETUP
@@ -1572,8 +1494,30 @@ app.index_string = f'''
                 }}
             }});
             
-            // ==================== USER SESSION ====================
+            // ==================== GOOGLE SIGN-IN ====================
             var currentUser = null;
+            
+            function handleCredentialResponse(response) {{
+                // Decode the JWT token
+                var base64Url = response.credential.split('.')[1];
+                var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                var jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {{
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }}).join(''));
+                
+                var user = JSON.parse(jsonPayload);
+                currentUser = {{
+                    name: user.name,
+                    email: user.email,
+                    picture: user.picture
+                }};
+                
+                // Save to localStorage
+                localStorage.setItem('curebot_user', JSON.stringify(currentUser));
+                
+                // Show main app
+                showMainApp(currentUser);
+            }}
             
             function showMainApp(user) {{
                 currentUser = user;
@@ -1586,19 +1530,16 @@ app.index_string = f'''
                     userInfoDiv.innerHTML = `
                         <img src="${{user.picture}}" class="user-avatar" alt="Avatar" onerror="this.src='https://ui-avatars.com/api/?name=${{encodeURIComponent(user.name)}}&background=00695C&color=fff'">
                         <span class="user-name">${{user.name.split(' ')[0]}}</span>
-                        <button class="logout-btn" onclick="logoutUser()">Exit</button>
+                        <button class="logout-btn" onclick="logoutUser()">Logout</button>
                     `;
                 }}
-                
-                // Save to localStorage
-                localStorage.setItem('curebot_user', JSON.stringify(user));
             }}
             
             function skipLogin() {{
                 var guestUser = {{
-                    name: 'User',
-                    email: 'user@curebot.app',
-                    picture: 'https://ui-avatars.com/api/?name=User&background=00695C&color=fff'
+                    name: 'Guest',
+                    email: 'guest@curebot.app',
+                    picture: 'https://ui-avatars.com/api/?name=Guest&background=00695C&color=fff'
                 }};
                 showMainApp(guestUser);
             }}
@@ -1608,18 +1549,196 @@ app.index_string = f'''
                 currentUser = null;
                 document.getElementById('login-page').style.display = 'flex';
                 document.getElementById('main-app').style.display = 'none';
+                
+                // Clear Google session if available
+                if (typeof google !== 'undefined' && google.accounts) {{
+                    google.accounts.id.disableAutoSelect();
+                }}
             }}
             
-            // Check for saved user on page load
+            // Initialize Google Sign-In with popup mode for iframe support
+            function initGoogleSignIn() {{
+                try {{
+                    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {{
+                        google.accounts.id.initialize({{
+                            client_id: '{GOOGLE_CLIENT_ID}',
+                            callback: handleCredentialResponse,
+                            ux_mode: 'popup',
+                            itp_support: true
+                        }});
+                        
+                        // Render the Google Sign-In button
+                        var btnContainer = document.getElementById('google-signin-btn');
+                        if (btnContainer) {{
+                            google.accounts.id.renderButton(
+                                btnContainer,
+                                {{ 
+                                    theme: 'outline', 
+                                    size: 'large',
+                                    shape: 'pill',
+                                    text: 'signin_with',
+                                    logo_alignment: 'center',
+                                    width: 280
+                                }}
+                            );
+                        }}
+                        console.log('Google Sign-In initialized successfully');
+                    }} else {{
+                        throw new Error('Google library not loaded');
+                    }}
+                }} catch(e) {{
+                    console.log('Google Sign-In init error:', e);
+                    showFallbackButton();
+                }}
+            }}
+            
+            // Popup-based Google Sign-In for iframe environments
+            function openGoogleSignInPopup() {{
+                try {{
+                    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {{
+                        // Use Google's built-in prompt
+                        google.accounts.id.prompt(function(notification) {{
+                            if (notification.isNotDisplayed()) {{
+                                console.log('Prompt not displayed:', notification.getNotDisplayedReason());
+                                // Try alternative: Open Google sign-in in new window
+                                openGoogleSignInWindow();
+                            }} else if (notification.isSkippedMoment()) {{
+                                console.log('Prompt skipped:', notification.getSkippedReason());
+                                openGoogleSignInWindow();
+                            }}
+                        }});
+                    }} else {{
+                        openGoogleSignInWindow();
+                    }}
+                }} catch(e) {{
+                    console.log('Popup error:', e);
+                    openGoogleSignInWindow();
+                }}
+            }}
+            
+            // Alternative: Open Google sign-in in a new window
+            function openGoogleSignInWindow() {{
+                var width = 500;
+                var height = 600;
+                var left = (screen.width - width) / 2;
+                var top = (screen.height - height) / 2;
+                
+                // Create a simple sign-in page that loads in the popup
+                var signInUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' +
+                    'client_id={GOOGLE_CLIENT_ID}&' +
+                    'redirect_uri=' + encodeURIComponent('https://anantmani13-curebot.hf.space') + '&' +
+                    'response_type=id_token&' +
+                    'scope=openid%20email%20profile&' +
+                    'nonce=' + Math.random().toString(36).substring(2) + '&' +
+                    'prompt=select_account';
+                
+                var popup = window.open(
+                    signInUrl,
+                    'Google Sign-In',
+                    'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top + ',popup=1,toolbar=0,menubar=0'
+                );
+                
+                // Check for popup completion
+                var checkPopup = setInterval(function() {{
+                    try {{
+                        if (popup.closed) {{
+                            clearInterval(checkPopup);
+                            // Check if we got a token in URL hash
+                            checkUrlForToken();
+                        }}
+                    }} catch(e) {{
+                        clearInterval(checkPopup);
+                    }}
+                }}, 500);
+            }}
+            
+            // Check URL for OAuth token (after redirect)
+            function checkUrlForToken() {{
+                var hash = window.location.hash;
+                if (hash && hash.includes('id_token=')) {{
+                    var params = new URLSearchParams(hash.substring(1));
+                    var idToken = params.get('id_token');
+                    if (idToken) {{
+                        handleCredentialResponse({{ credential: idToken }});
+                        // Clean up URL
+                        history.replaceState(null, '', window.location.pathname);
+                    }}
+                }}
+            }}
+            
+            function showFallbackButton() {{
+                var fallbackBtn = document.getElementById('fallback-google-btn');
+                var googleBtn = document.getElementById('google-signin-btn');
+                var hint = document.getElementById('signin-hint');
+                if (fallbackBtn) {{
+                    fallbackBtn.style.display = 'flex';
+                    fallbackBtn.onclick = function() {{
+                        openGoogleSignInPopup();
+                    }};
+                }}
+                if (googleBtn) {{
+                    googleBtn.style.display = 'none';
+                }}
+                if (hint) {{
+                    hint.style.display = 'block';
+                }}
+            }}
+            
+            // Try to initialize Google Sign-In
             window.onload = function() {{
+                // First check if we have an OAuth token in the URL (redirect from Google)
+                checkUrlForToken();
+                
+                // Check for saved user
                 var savedUser = localStorage.getItem('curebot_user');
                 if (savedUser) {{
                     try {{
                         showMainApp(JSON.parse(savedUser));
-                    }} catch(e) {{
-                        localStorage.removeItem('curebot_user');
-                    }}
+                        return;
+                    }} catch(e) {{}}
                 }}
+                
+                // Check if running in iframe (HuggingFace)
+                var inIframe = window.self !== window.top;
+                
+                if (inIframe) {{
+                    console.log('Running in iframe - using popup mode');
+                    // Still try to initialize Google SDK for popup
+                    setTimeout(function() {{
+                        try {{
+                            if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {{
+                                google.accounts.id.initialize({{
+                                    client_id: '{GOOGLE_CLIENT_ID}',
+                                    callback: handleCredentialResponse,
+                                    ux_mode: 'popup',
+                                    itp_support: true
+                                }});
+                                // Show fallback button that triggers popup
+                                showFallbackButton();
+                            }} else {{
+                                showFallbackButton();
+                            }}
+                        }} catch(e) {{
+                            showFallbackButton();
+                        }}
+                    }}, 500);
+                    return;
+                }}
+                
+                // Not in iframe - try normal initialization
+                setTimeout(initGoogleSignIn, 500);
+                setTimeout(function() {{
+                    var btn = document.getElementById('google-signin-btn');
+                    if (btn && btn.children.length === 0) {{
+                        initGoogleSignIn();
+                    }}
+                }}, 2000);
+                setTimeout(function() {{
+                    var btn = document.getElementById('google-signin-btn');
+                    if (btn && btn.children.length === 0) {{
+                        showFallbackButton();
+                    }}
+                }}, 4000);
             }};
             
             // ==================== EMERGENCY MODE ====================
@@ -1865,27 +1984,38 @@ app.layout = html.Div([
             html.H1(APP_NAME, className='login-title'),
             html.P(APP_TAGLINE, className='login-subtitle'),
             
-            # Enter CureBot Button
-            html.Button([
-                html.Span("🚀", style={'marginRight': '10px', 'fontSize': '20px'}),
-                "Enter CureBot"
-            ], id='skip-login-btn', n_clicks=0, className='enter-curebot-btn', style={
-                'display': 'flex',
-                'background': 'linear-gradient(135deg, #00695C 0%, #00897B 100%)',
-                'border': 'none', 'borderRadius': '30px',
-                'padding': '16px 40px', 'fontSize': '17px', 'fontWeight': '700',
-                'cursor': 'pointer', 'alignItems': 'center', 'justifyContent': 'center',
-                'color': 'white', 'width': '280px',
-                'boxShadow': '0 8px 25px rgba(0,105,92,0.4)', 'transition': 'all 0.3s ease',
-                'textTransform': 'uppercase', 'letterSpacing': '1px'
-            }),
+            # Google Sign-In Button Container
+            html.Div(className='google-btn-container', children=[
+                html.Div(id='google-signin-btn', style={'minHeight': '44px'}),
+                # Fallback button for iframe - opens popup
+                html.Button([
+                    html.Img(src='https://developers.google.com/identity/images/g-logo.png', 
+                            style={'width': '20px', 'height': '20px', 'marginRight': '10px'}),
+                    "Sign in with Google"
+                ], id='fallback-google-btn', n_clicks=0, className='fallback-google-btn', style={
+                    'display': 'none',
+                    'background': 'white', 'border': '2px solid #4285F4', 'borderRadius': '25px',
+                    'padding': '12px 25px', 'fontSize': '15px', 'fontWeight': '600',
+                    'cursor': 'pointer', 'alignItems': 'center', 'justifyContent': 'center',
+                    'color': '#4285F4', 'marginTop': '10px', 'width': '280px',
+                    'boxShadow': '0 2px 10px rgba(66,133,244,0.3)', 'transition': 'all 0.3s ease'
+                }),
+                html.P("Opens secure Google popup", id='signin-hint', style={
+                    'fontSize': '11px', 'color': '#666', 'marginTop': '8px', 'display': 'none'
+                })
+            ]),
             
-            html.P("Get AI-powered medicine recommendations", style={
-                'fontSize': '12px', 'color': '#666', 'marginTop': '12px'
-            }),
+            # Divider
+            html.Div(className='login-divider', children=[
+                html.Span("or")
+            ]),
+            
+            # Skip Login Button
+            html.Button("Continue as Guest", className='skip-login', 
+                       id='skip-login-btn', n_clicks=0),
             
             # Features
-            html.Div(className='login-features', style={'marginTop': '30px'}, children=[
+            html.Div(className='login-features', children=[
                 html.Div(className='login-feature', children=[
                     html.Div("🤖", className='login-feature-icon'),
                     html.Div("AI Powered", className='login-feature-text')
@@ -1896,7 +2026,7 @@ app.layout = html.Div([
                 ]),
                 html.Div(className='login-feature', children=[
                     html.Div("🗺️", className='login-feature-icon'),
-                    html.Div("Find Hospitals", className='login-feature-text')
+                    html.Div("Find Pharmacy", className='login-feature-text')
                 ]),
             ])
         ])
@@ -2253,22 +2383,19 @@ def update_chat(n_clicks, n_submit, *args):
         response_text = "❌ System Error: Database unavailable. Please try again later."
         conversation.append({'role': 'ai', 'content': response_text, 'data': None, 'is_emergency': False, 'gemini_advice': None})
     else:
-        recs, error_msg = get_ai_recommendation(final_text)
+        recs = get_ai_recommendation(final_text)
         
-        # Get Gemini AI advice (if API key configured and we have results)
+        # Get Gemini AI advice (if API key configured)
         gemini_advice = None
         if recs and GEMINI_ENABLED:
             gemini_advice = get_gemini_health_advice(final_text, recs)
         
-        if error_msg:
-            response_text = f"🤖 {error_msg}"
-            conversation.append({'role': 'ai', 'content': response_text, 'data': None, 'is_emergency': False, 'gemini_advice': None})
-        elif recs:
+        if recs:
             response_text = f"✅ Found {len(recs)} medicines matching your symptoms:"
-            conversation.append({'role': 'ai', 'content': response_text, 'data': recs, 'is_emergency': False, 'gemini_advice': gemini_advice})
         else:
             response_text = "😔 No exact matches found. Try different keywords or describe symptoms in more detail."
-            conversation.append({'role': 'ai', 'content': response_text, 'data': None, 'is_emergency': False, 'gemini_advice': None})
+        
+        conversation.append({'role': 'ai', 'content': response_text, 'data': recs, 'is_emergency': False, 'gemini_advice': gemini_advice})
 
     # Render Chat Bubbles
     chat_bubbles = []
