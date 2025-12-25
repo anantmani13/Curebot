@@ -2448,6 +2448,9 @@ def update_chat(n_clicks, n_submit, *args):
 # =============================================================================
 
 if __name__ == '__main__':
+    import os
+    port = int(os.environ.get('PORT', 7860))  # HuggingFace uses 7860
+    
     print("\n" + "═"*65)
     print(f"   ➕ {APP_NAME} v{APP_VERSION} - {APP_TAGLINE}")
     print("═"*65)
@@ -2457,7 +2460,7 @@ if __name__ == '__main__':
     print(f"   🔋 Status: {'Active ✅' if DATA_LOADED else 'Inactive ❌'}")
     print(f"   📍 Google Maps: {'Enabled ✅' if GOOGLE_MAPS_ENABLED else 'Click button to use'}")
     print("─"*65)
-    print(f"   🌐 Open: http://127.0.0.1:8051")
+    print(f"   🌐 Open: http://127.0.0.1:{port}")
     print("═"*65 + "\n")
     
-    app.run(debug=True, port=8051, host='0.0.0.0')
+    app.run(debug=False, port=port, host='0.0.0.0')
