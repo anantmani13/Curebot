@@ -1556,13 +1556,15 @@ app.index_string = f'''
                 }}
             }}
             
-            // Initialize Google Sign-In with error handling
+            // Initialize Google Sign-In with popup mode for iframe support
             function initGoogleSignIn() {{
                 try {{
                     if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {{
                         google.accounts.id.initialize({{
                             client_id: '{GOOGLE_CLIENT_ID}',
-                            callback: handleCredentialResponse
+                            callback: handleCredentialResponse,
+                            ux_mode: 'popup',
+                            itp_support: true
                         }});
                         
                         // Render the Google Sign-In button
@@ -1590,15 +1592,103 @@ app.index_string = f'''
                 }}
             }}
             
-            function showFallbackButton() {{
-                var fallbackBtn = document.getElementById('fallback-google-btn');
-                if (fallbackBtn) {{
-                    fallbackBtn.style.display = 'flex';
+            // Popup-based Google Sign-In for iframe environments
+            function openGoogleSignInPopup() {{
+                try {{
+                    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {{
+                        // Use Google's built-in prompt
+                        google.accounts.id.prompt(function(notification) {{
+                            if (notification.isNotDisplayed()) {{
+                                console.log('Prompt not displayed:', notification.getNotDisplayedReason());
+                                // Try alternative: Open Google sign-in in new window
+                                openGoogleSignInWindow();
+                            }} else if (notification.isSkippedMoment()) {{
+                                console.log('Prompt skipped:', notification.getSkippedReason());
+                                openGoogleSignInWindow();
+                            }}
+                        }});
+                    }} else {{
+                        openGoogleSignInWindow();
+                    }}
+                }} catch(e) {{
+                    console.log('Popup error:', e);
+                    openGoogleSignInWindow();
                 }}
             }}
             
-            // Try to initialize Google Sign-In multiple times
+            // Alternative: Open Google sign-in in a new window
+            function openGoogleSignInWindow() {{
+                var width = 500;
+                var height = 600;
+                var left = (screen.width - width) / 2;
+                var top = (screen.height - height) / 2;
+                
+                // Create a simple sign-in page that loads in the popup
+                var signInUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' +
+                    'client_id={GOOGLE_CLIENT_ID}&' +
+                    'redirect_uri=' + encodeURIComponent('https://anantmani13-curebot.hf.space') + '&' +
+                    'response_type=id_token&' +
+                    'scope=openid%20email%20profile&' +
+                    'nonce=' + Math.random().toString(36).substring(2) + '&' +
+                    'prompt=select_account';
+                
+                var popup = window.open(
+                    signInUrl,
+                    'Google Sign-In',
+                    'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top + ',popup=1,toolbar=0,menubar=0'
+                );
+                
+                // Check for popup completion
+                var checkPopup = setInterval(function() {{
+                    try {{
+                        if (popup.closed) {{
+                            clearInterval(checkPopup);
+                            // Check if we got a token in URL hash
+                            checkUrlForToken();
+                        }}
+                    }} catch(e) {{
+                        clearInterval(checkPopup);
+                    }}
+                }}, 500);
+            }}
+            
+            // Check URL for OAuth token (after redirect)
+            function checkUrlForToken() {{
+                var hash = window.location.hash;
+                if (hash && hash.includes('id_token=')) {{
+                    var params = new URLSearchParams(hash.substring(1));
+                    var idToken = params.get('id_token');
+                    if (idToken) {{
+                        handleCredentialResponse({{ credential: idToken }});
+                        // Clean up URL
+                        history.replaceState(null, '', window.location.pathname);
+                    }}
+                }}
+            }}
+            
+            function showFallbackButton() {{
+                var fallbackBtn = document.getElementById('fallback-google-btn');
+                var googleBtn = document.getElementById('google-signin-btn');
+                var hint = document.getElementById('signin-hint');
+                if (fallbackBtn) {{
+                    fallbackBtn.style.display = 'flex';
+                    fallbackBtn.onclick = function() {{
+                        openGoogleSignInPopup();
+                    }};
+                }}
+                if (googleBtn) {{
+                    googleBtn.style.display = 'none';
+                }}
+                if (hint) {{
+                    hint.style.display = 'block';
+                }}
+            }}
+            
+            // Try to initialize Google Sign-In
             window.onload = function() {{
+                // First check if we have an OAuth token in the URL (redirect from Google)
+                checkUrlForToken();
+                
                 // Check for saved user
                 var savedUser = localStorage.getItem('curebot_user');
                 if (savedUser) {{
@@ -1608,23 +1698,41 @@ app.index_string = f'''
                     }} catch(e) {{}}
                 }}
                 
-                // Check if running in iframe (HuggingFace) - show fallback immediately
-                if (window.self !== window.top) {{
-                    console.log('Running in iframe - showing fallback button');
-                    showFallbackButton();
+                // Check if running in iframe (HuggingFace)
+                var inIframe = window.self !== window.top;
+                
+                if (inIframe) {{
+                    console.log('Running in iframe - using popup mode');
+                    // Still try to initialize Google SDK for popup
+                    setTimeout(function() {{
+                        try {{
+                            if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {{
+                                google.accounts.id.initialize({{
+                                    client_id: '{GOOGLE_CLIENT_ID}',
+                                    callback: handleCredentialResponse,
+                                    ux_mode: 'popup',
+                                    itp_support: true
+                                }});
+                                // Show fallback button that triggers popup
+                                showFallbackButton();
+                            }} else {{
+                                showFallbackButton();
+                            }}
+                        }} catch(e) {{
+                            showFallbackButton();
+                        }}
+                    }}, 500);
                     return;
                 }}
                 
-                // Try immediate init
+                // Not in iframe - try normal initialization
                 setTimeout(initGoogleSignIn, 500);
-                // Retry after 2 seconds if failed
                 setTimeout(function() {{
                     var btn = document.getElementById('google-signin-btn');
                     if (btn && btn.children.length === 0) {{
                         initGoogleSignIn();
                     }}
                 }}, 2000);
-                // Final fallback after 4 seconds
                 setTimeout(function() {{
                     var btn = document.getElementById('google-signin-btn');
                     if (btn && btn.children.length === 0) {{
@@ -1878,24 +1986,23 @@ app.layout = html.Div([
             
             # Google Sign-In Button Container
             html.Div(className='google-btn-container', children=[
-                # Real Google Sign-In button (works in new tab)
-                html.A([
-                    html.Button([
-                        html.Img(src='https://developers.google.com/identity/images/g-logo.png', 
-                                style={'width': '20px', 'height': '20px', 'marginRight': '10px'}),
-                        "Sign in with Google"
-                    ], style={
-                        'display': 'flex',
-                        'background': 'white', 'border': '2px solid #4285F4', 'borderRadius': '25px',
-                        'padding': '12px 25px', 'fontSize': '15px', 'fontWeight': '600',
-                        'cursor': 'pointer', 'alignItems': 'center', 'justifyContent': 'center',
-                        'color': '#4285F4', 'width': '280px',
-                        'boxShadow': '0 2px 10px rgba(66,133,244,0.3)', 'transition': 'all 0.3s ease'
-                    })
-                ], href='https://anantmani13-curebot.hf.space', target='_blank', style={'textDecoration': 'none'}),
-                html.P("Opens in new tab for Google Sign-In", style={'fontSize': '11px', 'color': '#888', 'marginTop': '5px'}),
-                html.Div(id='google-signin-btn', style={'display': 'none'}),
-                html.Div(id='fallback-google-btn', style={'display': 'none'})
+                html.Div(id='google-signin-btn', style={'minHeight': '44px'}),
+                # Fallback button for iframe - opens popup
+                html.Button([
+                    html.Img(src='https://developers.google.com/identity/images/g-logo.png', 
+                            style={'width': '20px', 'height': '20px', 'marginRight': '10px'}),
+                    "Sign in with Google"
+                ], id='fallback-google-btn', n_clicks=0, className='fallback-google-btn', style={
+                    'display': 'none',
+                    'background': 'white', 'border': '2px solid #4285F4', 'borderRadius': '25px',
+                    'padding': '12px 25px', 'fontSize': '15px', 'fontWeight': '600',
+                    'cursor': 'pointer', 'alignItems': 'center', 'justifyContent': 'center',
+                    'color': '#4285F4', 'marginTop': '10px', 'width': '280px',
+                    'boxShadow': '0 2px 10px rgba(66,133,244,0.3)', 'transition': 'all 0.3s ease'
+                }),
+                html.P("Opens secure Google popup", id='signin-hint', style={
+                    'fontSize': '11px', 'color': '#666', 'marginTop': '8px', 'display': 'none'
+                })
             ]),
             
             # Divider
