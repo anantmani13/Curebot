@@ -3170,9 +3170,10 @@ app.clientside_callback(
         
         var voiceBtn = document.getElementById('voice-btn');
         var inputField = document.getElementById('user-input');
+        var sendBtn = document.getElementById('send-btn');
         
-        if (!voiceBtn || !inputField) {
-            console.error('Elements not found');
+        if (!voiceBtn || !inputField || !sendBtn) {
+            console.error('Required elements not found');
             return "";
         }
         
@@ -3196,51 +3197,53 @@ app.clientside_callback(
             voiceBtn.style.transform = 'scale(1.1)';
             
             recognition.start();
+            console.log('🎤 Voice recognition started...');
+            
+            var finalTranscript = '';
             
             recognition.onresult = function(event) {
+                console.log('🎤 Got result event');
                 if (event.results && event.results.length > 0) {
-                    var transcript = event.results[0][0].transcript;
+                    finalTranscript = event.results[0][0].transcript;
+                    console.log('🎤 Recognized text:', finalTranscript);
                     
-                    inputField.value = transcript;
+                    inputField.value = finalTranscript;
                     
-                    try {
-                        var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-                        nativeInputValueSetter.call(inputField, transcript);
-                        
-                        var ev1 = new Event('input', { bubbles: true });
-                        inputField.dispatchEvent(ev1);
-                        
-                        var ev2 = new Event('change', { bubbles: true });
-                        inputField.dispatchEvent(ev2);
-                    } catch (e) {
-                        console.error('Event dispatch error:', e);
-                    }
+                    var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+                    nativeInputValueSetter.call(inputField, finalTranscript);
+                    
+                    var inputEvent = new Event('input', { bubbles: true });
+                    inputField.dispatchEvent(inputEvent);
+                    
+                    var changeEvent = new Event('change', { bubbles: true });
+                    inputField.dispatchEvent(changeEvent);
                 }
             };
             
             recognition.onend = function() {
+                console.log('🎤 Recognition ended');
                 voiceBtn.disabled = false;
                 voiceBtn.style.background = 'linear-gradient(135deg, #7B1FA2 0%, #9C27B0 100%)';
                 voiceBtn.innerHTML = '🎤';
                 voiceBtn.style.transform = 'scale(1)';
                 
-                if (inputField.value && inputField.value.trim().length > 0) {
+                if (finalTranscript && finalTranscript.trim().length > 0) {
+                    console.log('🎤 Auto-submitting search for:', finalTranscript);
                     setTimeout(function() {
-                        var sendBtn = document.getElementById('send-btn');
-                        if (sendBtn) {
-                            sendBtn.click();
-                        }
-                    }, 200);
+                        console.log('🎤 Clicking send button...');
+                        sendBtn.click();
+                    }, 500);
+                } else {
+                    console.log('🎤 No transcript to submit');
                 }
             };
             
             recognition.onerror = function(event) {
+                console.error('🎤 Speech error:', event.error);
                 voiceBtn.disabled = false;
                 voiceBtn.style.background = 'linear-gradient(135deg, #7B1FA2 0%, #9C27B0 100%)';
                 voiceBtn.innerHTML = '🎤';
                 voiceBtn.style.transform = 'scale(1)';
-                
-                console.error('Speech error:', event.error);
                 
                 if (event.error === 'no-speech') {
                     alert('🎤 No speech detected. Please speak clearly and try again.');
@@ -3249,7 +3252,7 @@ app.clientside_callback(
                 } else if (event.error === 'network') {
                     alert('🎤 Network error. Check your internet connection.');
                 } else if (event.error === 'aborted') {
-                    console.log('Speech recognition aborted');
+                    console.log('🎤 Recognition aborted');
                 } else {
                     alert('🎤 Error: ' + event.error);
                 }
@@ -3261,7 +3264,7 @@ app.clientside_callback(
             voiceBtn.innerHTML = '🎤';
             voiceBtn.style.transform = 'scale(1)';
             
-            console.error('Recognition error:', error);
+            console.error('🎤 Recognition error:', error);
             alert('Speech recognition failed: ' + error.message);
         }
         
