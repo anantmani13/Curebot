@@ -212,18 +212,6 @@ def hybrid_search(query, df1, vectorizer, tfidf_matrix, top_n=15):
     
     for sem_result in semantic_results:
         if not any(r['Medicine Name'].lower() == sem_result['Medicine Name'].lower() for r in boosted_results):
-            boosted_results.append({
-                'Medicine Name': sem_result['Medicine Name'],
-                'Therapeutic Class': sem_result['Therapeutic Class'],
-                'Action Class': 'N/A',
-                'Uses': sem_result['Uses'],
-                'Side Effects': sem_result['Side Effects'],
-                'Manufacturer': sem_result['Manufacturer'],
-                'Match Score': f"{sem_result['Semantic Score'] * 100:.1f}%",
-                'Raw Score': sem_result['Semantic Score'],
-                'Search Type': 'Semantic'
-            })
-    
     boosted_results.sort(key=lambda x: x['Raw Score'], reverse=True)
     return boosted_results[:top_n]
 
