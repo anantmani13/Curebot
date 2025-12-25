@@ -1,8 +1,3 @@
-"""
-MEDIMATCH ML ENGINE - CureBot Machine Learning Core
-Hybrid Search: TF-IDF + Semantic (Sentence Transformers)
-+ Google Translate (Hindi to English via Gemini AI)
-"""
 
 import pandas as pd
 import numpy as np
