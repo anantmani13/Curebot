@@ -1608,6 +1608,13 @@ app.index_string = f'''
                     }} catch(e) {{}}
                 }}
                 
+                // Check if running in iframe (HuggingFace) - show fallback immediately
+                if (window.self !== window.top) {{
+                    console.log('Running in iframe - showing fallback button');
+                    showFallbackButton();
+                    return;
+                }}
+                
                 // Try immediate init
                 setTimeout(initGoogleSignIn, 500);
                 // Retry after 2 seconds if failed
