@@ -1883,9 +1883,9 @@ app.layout = html.Div([
                 html.Button([
                     html.Img(src='https://developers.google.com/identity/images/g-logo.png', 
                             style={'width': '20px', 'height': '20px', 'marginRight': '10px'}),
-                    "Continue with Google"
+                    "Sign in with Google"
                 ], id='fallback-google-btn', n_clicks=0, className='fallback-google-btn', style={
-                    'display': 'none',  # Hidden by default, shown by JS if Google fails
+                    'display': 'flex',  # Always show - Google Sign-In doesn't work in iframes
                     'background': 'white', 'border': '2px solid #4285F4', 'borderRadius': '25px',
                     'padding': '12px 25px', 'fontSize': '15px', 'fontWeight': '600',
                     'cursor': 'pointer', 'alignItems': 'center', 'justifyContent': 'center',
