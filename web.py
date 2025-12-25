@@ -3239,11 +3239,17 @@ app.clientside_callback(
             };
             
             recognition.onerror = function(event) {
-                console.error('🎤 Speech error:', event.error);
                 voiceBtn.disabled = false;
                 voiceBtn.style.background = 'linear-gradient(135deg, #7B1FA2 0%, #9C27B0 100%)';
                 voiceBtn.innerHTML = '🎤';
                 voiceBtn.style.transform = 'scale(1)';
+                
+                if (event.error === 'aborted') {
+                    console.log('🎤 Recognition aborted - ignoring');
+                    return;
+                }
+                
+                console.error('🎤 Speech error:', event.error);
                 
                 if (event.error === 'no-speech') {
                     alert('🎤 No speech detected. Please speak clearly and try again.');
@@ -3251,8 +3257,6 @@ app.clientside_callback(
                     alert('🎤 Microphone permission denied.\\n\\nPlease:\\n1. Click the 🔒 lock icon in address bar\\n2. Allow microphone access\\n3. Refresh page');
                 } else if (event.error === 'network') {
                     alert('🎤 Network error. Check your internet connection.');
-                } else if (event.error === 'aborted') {
-                    console.log('🎤 Recognition aborted');
                 } else {
                     alert('🎤 Error: ' + event.error);
                 }
