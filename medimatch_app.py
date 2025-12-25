@@ -1,6 +1,7 @@
 """
 MEDIMATCH ML ENGINE - CureBot Machine Learning Core
 Hybrid Search: TF-IDF + Semantic (Sentence Transformers)
++ Google Translate (Hindi to English via Gemini AI)
 """
 
 import pandas as pd
@@ -21,6 +22,47 @@ try:
 except ImportError:
     SEMANTIC_AVAILABLE = False
     print("⚠️ Sentence Transformers not available")
+
+# =============================================================================
+# GOOGLE TRANSLATE (Using Gemini AI - FREE, no separate API key needed!)
+# =============================================================================
+GEMINI_API_KEY = "AIzaSyDPT3BMbLEUj17haABGGpSsx70lDoPUgEA"
+TRANSLATE_ENABLED = True
+
+def translate_to_english(text):
+    """Translate Hindi/Regional text to English using Gemini AI (FREE)"""
+    if not TRANSLATE_ENABLED:
+        return text
+    
+    # Quick check - if already English, return as-is
+    if all(ord(c) < 128 or c in ' .,!?' for c in text):
+        return text
+    
+    try:
+        prompt = f"""Translate the following text to English. If it's already in English, return it as-is.
+Only return the translation, nothing else. Keep medical terms accurate.
+
+Text: {text}
+
+Translation:"""
+        
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+        
+        data = json.dumps({
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 100}
+        }).encode('utf-8')
+        
+        req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
+        
+        with urllib.request.urlopen(req, timeout=5) as response:
+            result = json.loads(response.read().decode('utf-8'))
+            translated = result['candidates'][0]['content']['parts'][0]['text'].strip()
+            print(f"🌐 Translated: '{text}' → '{translated}'")
+            return translated
+    except Exception as e:
+        print(f"Translation error: {e}")
+        return text
 
 # DATA LOADING
 def extract_zip_if_needed(zip_path, extract_to='.'):
@@ -210,23 +252,44 @@ def hybrid_search(query, df1, vectorizer, tfidf_matrix, top_n=15):
             result['Search Type'] = 'TF-IDF'
         boosted_results.append(result)
     
-    # Add unique semantic results
     for sem_result in semantic_results:
         if not any(r['Medicine Name'].lower() == sem_result['Medicine Name'].lower() for r in boosted_results):
-            boosted_results.append({
-                'Medicine Name': sem_result['Medicine Name'],
-                'Therapeutic Class': sem_result['Therapeutic Class'],
-                'Action Class': 'N/A',
-                'Uses': sem_result['Uses'],
-                'Side Effects': sem_result['Side Effects'],
-                'Manufacturer': sem_result['Manufacturer'],
-                'Match Score': f"{sem_result['Semantic Score'] * 100:.1f}%",
-                'Raw Score': sem_result['Semantic Score'],
-                'Search Type': 'Semantic'
-            })
-    
     boosted_results.sort(key=lambda x: x['Raw Score'], reverse=True)
     return boosted_results[:top_n]
+
+# 30 SYMPTOM CATEGORIES WITH MEDICAL SYNONYMS
+SYMPTOM_SYNONYMS = {
+    'headache': 'headache head pain migraine cephalalgia tension headache cluster headache sinus headache',
+    'fever': 'fever pyrexia high temperature febrile hyperthermia chills shivering',
+    'cold': 'cold common cold flu influenza runny nose nasal congestion sneezing rhinitis',
+    'cough': 'cough dry cough wet cough productive cough bronchitis whooping tussis',
+    'pain': 'pain ache soreness discomfort body pain muscle pain joint pain arthralgia myalgia',
+    'nausea': 'nausea vomiting upset stomach queasiness motion sickness antiemetic',
+    'diarrhea': 'diarrhea loose motion stomach upset gastroenteritis dysentery',
+    'allergy': 'allergy allergic reaction itching hives urticaria antihistamine rhinitis',
+    'diabetes': 'diabetes blood sugar hyperglycemia glucose insulin antidiabetic',
+    'hypertension': 'hypertension high blood pressure bp antihypertensive cardiovascular',
+    'infection': 'infection bacterial viral fungal sepsis antibiotic antimicrobial',
+    'anxiety': 'anxiety stress tension nervousness panic anxiolytic restless',
+    'insomnia': 'insomnia sleeplessness sleep disorder trouble sleeping sedative hypnotic',
+    'acidity': 'acidity heartburn acid reflux gastritis gerd antacid dyspepsia',
+    'asthma': 'asthma wheezing breathing difficulty bronchospasm inhaler bronchodilator',
+    'depression': 'depression sad mood antidepressant serotonin melancholy',
+    'skin': 'skin rash eczema dermatitis psoriasis fungal cream ointment topical',
+    'eye': 'eye vision conjunctivitis dry eye drops ophthalmic ocular',
+    'ear': 'ear pain otitis infection drops otic hearing tinnitus',
+    'throat': 'throat sore pharyngitis tonsillitis strep laryngitis',
+    'vitamin': 'vitamin supplement deficiency multivitamin nutrition minerals',
+    'blood': 'blood anemia iron hemoglobin platelet hematologic',
+    'heart': 'heart cardiac arrhythmia angina cardiovascular palpitation',
+    'kidney': 'kidney renal urinary nephro bladder',
+    'liver': 'liver hepatic hepatitis cirrhosis hepato biliary',
+    'thyroid': 'thyroid hypothyroid hyperthyroid levothyroxine goiter',
+    'cholesterol': 'cholesterol lipid statin triglyceride hdl ldl',
+    'constipation': 'constipation laxative bowel movement stool softener',
+    'dizziness': 'dizziness vertigo lightheaded balance spinning faint',
+    'fatigue': 'fatigue tiredness weakness energy exhaustion lethargy',
+}
 
 # SMART BODY PART + SYMPTOM DETECTION
 SMART_SYMPTOM_MAP = {
@@ -269,43 +332,17 @@ def smart_symptom_detection(user_input):
         return ' '.join(detected_symptoms)
     return None
 
-# 30 SYMPTOM CATEGORIES WITH MEDICAL SYNONYMS
-SYMPTOM_SYNONYMS = {
-    'headache': 'headache head pain migraine cephalalgia tension headache cluster headache sinus headache',
-    'fever': 'fever pyrexia high temperature febrile hyperthermia chills shivering',
-    'cold': 'cold common cold flu influenza runny nose nasal congestion sneezing rhinitis',
-    'cough': 'cough dry cough wet cough productive cough bronchitis whooping tussis',
-    'pain': 'pain ache soreness discomfort body pain muscle pain joint pain arthralgia myalgia',
-    'nausea': 'nausea vomiting upset stomach queasiness motion sickness antiemetic',
-    'diarrhea': 'diarrhea loose motion stomach upset gastroenteritis dysentery',
-    'allergy': 'allergy allergic reaction itching hives urticaria antihistamine rhinitis',
-    'diabetes': 'diabetes blood sugar hyperglycemia glucose insulin antidiabetic',
-    'hypertension': 'hypertension high blood pressure bp antihypertensive cardiovascular',
-    'infection': 'infection bacterial viral fungal sepsis antibiotic antimicrobial',
-    'anxiety': 'anxiety stress tension nervousness panic anxiolytic restless',
-    'insomnia': 'insomnia sleeplessness sleep disorder trouble sleeping sedative hypnotic',
-    'acidity': 'acidity heartburn acid reflux gastritis gerd antacid dyspepsia',
-    'asthma': 'asthma wheezing breathing difficulty bronchospasm inhaler bronchodilator',
-    'depression': 'depression sad mood antidepressant serotonin melancholy',
-    'skin': 'skin rash eczema dermatitis psoriasis fungal cream ointment topical',
-    'eye': 'eye vision conjunctivitis dry eye drops ophthalmic ocular',
-    'ear': 'ear pain otitis infection drops otic hearing tinnitus',
-    'throat': 'throat sore pharyngitis tonsillitis strep laryngitis',
-    'vitamin': 'vitamin supplement deficiency multivitamin nutrition minerals',
-    'blood': 'blood anemia iron hemoglobin platelet hematologic',
-    'heart': 'heart cardiac arrhythmia angina cardiovascular palpitation',
-    'kidney': 'kidney renal urinary nephro bladder',
-    'liver': 'liver hepatic hepatitis cirrhosis hepato biliary',
-    'thyroid': 'thyroid hypothyroid hyperthyroid levothyroxine goiter',
-    'cholesterol': 'cholesterol lipid statin triglyceride hdl ldl',
-    'constipation': 'constipation laxative bowel movement stool softener',
-    'dizziness': 'dizziness vertigo lightheaded balance spinning faint',
-    'fatigue': 'fatigue tiredness weakness energy exhaustion lethargy',
-}
-
 def expand_symptoms(user_input):
     """Expand user input with medical synonyms for better matching"""
     expanded = user_input.lower()
+    
+    # First try smart detection
+    smart_expansion = smart_symptom_detection(user_input)
+    if smart_expansion:
+        expanded = expanded + ' ' + smart_expansion
+        return expanded
+    
+    # Fallback to keyword-based expansion
     for symptom, synonyms in SYMPTOM_SYNONYMS.items():
         if symptom in expanded:
             expanded = expanded + ' ' + synonyms
@@ -313,7 +350,8 @@ def expand_symptoms(user_input):
 
 # SMART QUERY VALIDATION - Reject non-medical queries
 MEDICAL_KEYWORDS = {
-    'pain', 'ache', 'fever', 'cold', 'cough', 'headache', 'stomach', 'nausea', 'vomiting',
+    'pain', 'paining', 'ache', 'aching', 'hurt', 'hurting', 'dard',
+    'fever', 'cold', 'cough', 'headache', 'stomach', 'nausea', 'vomiting',
     'diarrhea', 'allergy', 'rash', 'infection', 'diabetes', 'sugar', 'blood', 'pressure',
     'heart', 'chest', 'breathing', 'asthma', 'anxiety', 'stress', 'depression', 'sleep',
     'insomnia', 'tired', 'fatigue', 'weakness', 'dizziness', 'vertigo', 'eye', 'ear',
