@@ -48,10 +48,54 @@ GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"  # Optional - OpenStreetMap is 
 # Google Gemini API (Get free key from https://aistudio.google.com/)
 GEMINI_API_KEY = "AIzaSyDPT3BMbLEUj17haABGGpSsx70lDoPUgEA"
 
+# Google Translate API (using Gemini for translation - FREE)
+TRANSLATE_ENABLED = True
+
 # Check if APIs are configured
 GOOGLE_AUTH_ENABLED = GOOGLE_CLIENT_ID != "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
 GOOGLE_MAPS_ENABLED = GOOGLE_MAPS_API_KEY != "YOUR_GOOGLE_MAPS_API_KEY"
 GEMINI_ENABLED = GEMINI_API_KEY != "YOUR_GEMINI_API_KEY"
+
+# =============================================================================
+# GOOGLE TRANSLATE (Using Gemini AI for translation - FREE, no separate API key)
+# =============================================================================
+def translate_to_english(text):
+    """Translate Hindi/Regional text to English using Gemini AI"""
+    if not GEMINI_ENABLED or not TRANSLATE_ENABLED:
+        return text
+    
+    # Quick check - if already English, return as-is
+    if all(ord(c) < 128 or c in ' .,!?' for c in text):
+        return text  # Already ASCII/English
+    
+    try:
+        prompt = f"""Translate the following text to English. If it's already in English, return it as-is.
+Only return the translation, nothing else. Keep medical terms accurate.
+
+Text: {text}
+
+Translation:"""
+        
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+        
+        data = json.dumps({
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": 0.1,
+                "maxOutputTokens": 100
+            }
+        }).encode('utf-8')
+        
+        req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
+        
+        with urllib.request.urlopen(req, timeout=5) as response:
+            result = json.loads(response.read().decode('utf-8'))
+            translated = result['candidates'][0]['content']['parts'][0]['text'].strip()
+            print(f"🌐 Translated: '{text}' → '{translated}'")
+            return translated
+    except Exception as e:
+        print(f"Translation error: {e}")
+        return text  # Return original if translation fails
 
 # =============================================================================
 # GEMINI AI INTEGRATION (Google AI Studio)
@@ -2269,7 +2313,7 @@ app.layout = html.Div([
             'flexWrap': 'wrap', 'alignItems': 'center', 'justifyContent': 'center'
         }),
 
-        # Input Area - Premium Design
+        # Input Area - Premium Design with Voice Input
         html.Div([
             dcc.Input(
                 id='user-input',
@@ -2281,6 +2325,22 @@ app.layout = html.Div([
                     'border': '2px solid var(--primary-light)', 'fontSize': '1rem',
                     'background': 'rgba(255,255,255,0.98)',
                     'boxShadow': 'var(--shadow-soft)',
+                }
+            ),
+            # 🎤 Voice Input Button (Speech-to-Text)
+            html.Button([
+                html.Span("🎤", style={'fontSize': '1.4rem'})
+            ],
+                id='voice-btn',
+                n_clicks=0,
+                title='Click to speak (Hindi/English)',
+                style={
+                    'padding': '18px 22px',
+                    'background': 'linear-gradient(135deg, #7B1FA2 0%, #9C27B0 100%)',
+                    'color': 'white', 'border': 'none', 'borderRadius': '50%',
+                    'cursor': 'pointer', 'fontSize': '1.2rem',
+                    'boxShadow': '0 4px 15px rgba(123,31,162,0.4)',
+                    'transition': 'all 0.3s ease'
                 }
             ),
             html.Button([
@@ -2299,7 +2359,7 @@ app.layout = html.Div([
                     'display': 'flex', 'alignItems': 'center'
                 }
             )
-        ], style={'display': 'flex', 'gap': '18px'})
+        ], style={'display': 'flex', 'gap': '18px', 'alignItems': 'center'})
 
     ], style={
         'maxWidth': '1050px', 'margin': '0 auto', 'padding': '0 28px',
@@ -2334,7 +2394,8 @@ app.layout = html.Div([
     html.Div(id='pharmacy-trigger', style={'display': 'none'}),
     html.Div(id='skip-login-trigger', style={'display': 'none'}),
     html.Div(id='fallback-google-trigger', style={'display': 'none'}),
-    html.Div(id='emergency-trigger', style={'display': 'none'})
+    html.Div(id='emergency-trigger', style={'display': 'none'}),
+    html.Div(id='voice-trigger', style={'display': 'none'})  # Voice input trigger
 
 ])
 
@@ -2415,6 +2476,67 @@ app.clientside_callback(
     Input('emergency-btn', 'n_clicks')
 )
 
+# 🎤 Voice Input (Speech-to-Text) - Uses browser's Web Speech API
+app.clientside_callback(
+    """
+    function(n_clicks) {
+        if (n_clicks > 0) {
+            // Check if Speech Recognition is supported
+            var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert('Speech recognition not supported in this browser. Try Chrome or Edge.');
+                return "";
+            }
+            
+            var recognition = new SpeechRecognition();
+            recognition.lang = 'hi-IN';  // Hindi (also understands English)
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+            
+            // Change button style to show listening
+            var voiceBtn = document.getElementById('voice-btn');
+            voiceBtn.style.background = 'linear-gradient(135deg, #D32F2F 0%, #F44336 100%)';
+            voiceBtn.innerHTML = '🔴';
+            
+            recognition.start();
+            
+            recognition.onresult = function(event) {
+                var transcript = event.results[0][0].transcript;
+                var inputField = document.getElementById('user-input');
+                inputField.value = transcript;
+                
+                // Trigger input event so Dash knows about the change
+                var evt = new Event('input', { bubbles: true });
+                inputField.dispatchEvent(evt);
+                
+                // Reset button
+                voiceBtn.style.background = 'linear-gradient(135deg, #7B1FA2 0%, #9C27B0 100%)';
+                voiceBtn.innerHTML = '🎤';
+                
+                console.log('🎤 Voice recognized:', transcript);
+            };
+            
+            recognition.onerror = function(event) {
+                console.log('Speech error:', event.error);
+                voiceBtn.style.background = 'linear-gradient(135deg, #7B1FA2 0%, #9C27B0 100%)';
+                voiceBtn.innerHTML = '🎤';
+                if (event.error === 'no-speech') {
+                    alert('No speech detected. Please try again.');
+                }
+            };
+            
+            recognition.onend = function() {
+                voiceBtn.style.background = 'linear-gradient(135deg, #7B1FA2 0%, #9C27B0 100%)';
+                voiceBtn.innerHTML = '🎤';
+            };
+        }
+        return "";
+    }
+    """,
+    Output('voice-trigger', 'children'),
+    Input('voice-btn', 'n_clicks')
+)
+
 # Main Chat Callback
 @app.callback(
     [Output('chat-history', 'children'),
@@ -2470,6 +2592,14 @@ def update_chat(n_clicks, n_submit, *args):
     
     if not final_text:
         return dash.no_update, dash.no_update, dash.no_update
+
+    # 🌐 GOOGLE TRANSLATE: Auto-translate Hindi/Regional to English
+    original_text = final_text
+    translated_text = translate_to_english(final_text)
+    if translated_text != original_text:
+        print(f"🌐 Translation: '{original_text}' → '{translated_text}'")
+        final_text = translated_text  # Use translated text for search
+        display_text = f"{original_text} 🌐"  # Show original with translate indicator
 
     # Emergency check
     emergency_keywords = ["heart attack", "stroke", "chest pain", "breathing difficulty", 
