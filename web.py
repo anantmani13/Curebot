@@ -1878,20 +1878,20 @@ app.layout = html.Div([
             
             # Google Sign-In Button Container
             html.Div(className='google-btn-container', children=[
-                html.Div(id='google-signin-btn', style={'minHeight': '44px'}),
-                # Fallback button if Google fails to load
+                # Google Sign-In button - always visible
                 html.Button([
                     html.Img(src='https://developers.google.com/identity/images/g-logo.png', 
                             style={'width': '20px', 'height': '20px', 'marginRight': '10px'}),
                     "Sign in with Google"
                 ], id='fallback-google-btn', n_clicks=0, className='fallback-google-btn', style={
-                    'display': 'flex',  # Always show - Google Sign-In doesn't work in iframes
+                    'display': 'flex',
                     'background': 'white', 'border': '2px solid #4285F4', 'borderRadius': '25px',
                     'padding': '12px 25px', 'fontSize': '15px', 'fontWeight': '600',
                     'cursor': 'pointer', 'alignItems': 'center', 'justifyContent': 'center',
-                    'color': '#4285F4', 'marginTop': '10px', 'width': '280px',
+                    'color': '#4285F4', 'width': '280px',
                     'boxShadow': '0 2px 10px rgba(66,133,244,0.3)', 'transition': 'all 0.3s ease'
-                })
+                }),
+                html.Div(id='google-signin-btn', style={'display': 'none'})
             ]),
             
             # Divider
