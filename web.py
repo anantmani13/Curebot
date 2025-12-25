@@ -15,9 +15,7 @@ from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
 
-# =============================================================================
-# APP BRANDING & CONFIGURATION
-# =============================================================================
+# APP CONFIG
 APP_NAME = "CureBot"
 APP_TAGLINE = "Your AI-Powered Medicine Assistant"
 APP_VERSION = "3.0"
@@ -30,9 +28,7 @@ MEDICAL_RED = "#D32F2F"        # Medical Cross Red
 BG_COLOR = "#E0F2F1"           # Soft Green Background
 EMERGENCY_RED = "#B71C1C"      # Emergency Dark Red
 
-# =============================================================================
-# GOOGLE API CONFIGURATION
-# =============================================================================
+# GOOGLE API CONFIG
 GOOGLE_CLIENT_ID = "1079027064414-82gdpim62um96jjgg91tcct8oucapphk.apps.googleusercontent.com"
 GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"  # Optional - OpenStreetMap is used instead (FREE)
 
@@ -44,9 +40,7 @@ GOOGLE_AUTH_ENABLED = GOOGLE_CLIENT_ID != "YOUR_GOOGLE_CLIENT_ID.apps.googleuser
 GOOGLE_MAPS_ENABLED = GOOGLE_MAPS_API_KEY != "YOUR_GOOGLE_MAPS_API_KEY"
 GEMINI_ENABLED = GEMINI_API_KEY != "YOUR_GEMINI_API_KEY"
 
-# =============================================================================
-# GEMINI AI INTEGRATION (Google AI Studio)
-# =============================================================================
+# GEMINI AI
 import urllib.request
 import urllib.parse
 
@@ -93,9 +87,7 @@ def get_gemini_health_advice(symptom, medicines):
     
     return None
 
-# =============================================================================
-# DISEASE ANALYTICS DATA (AI-Generated Statistics)
-# =============================================================================
+# DISEASE ANALYTICS
 DISEASE_STATS = {
     'headache': {'prevalence': 46, 'recovery_rate': 95, 'avg_duration': 2, 'severity': 'Low'},
     'fever': {'prevalence': 38, 'recovery_rate': 98, 'avg_duration': 3, 'severity': 'Medium'},
@@ -187,10 +179,7 @@ def create_disease_analytics_graph(symptom):
     
     return fig, stats
 
-# =============================================================================
-# 1. ML BACKEND - Data Loading & Model Training
-# =============================================================================
-
+# ML BACKEND
 def extract_zip_if_needed(zip_path, extract_to='.'):
     if os.path.exists(zip_path):
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
@@ -303,6 +292,71 @@ def expand_symptoms(user_input):
             expanded = expanded + ' ' + synonyms
     return expanded
 
+# SMART QUERY VALIDATION - Reject non-medical queries
+MEDICAL_KEYWORDS = {
+    'pain', 'ache', 'fever', 'cold', 'cough', 'headache', 'stomach', 'nausea', 'vomiting',
+    'diarrhea', 'allergy', 'rash', 'infection', 'diabetes', 'sugar', 'blood', 'pressure',
+    'heart', 'chest', 'breathing', 'asthma', 'anxiety', 'stress', 'depression', 'sleep',
+    'insomnia', 'tired', 'fatigue', 'weakness', 'dizziness', 'vertigo', 'eye', 'ear',
+    'throat', 'skin', 'joint', 'muscle', 'back', 'knee', 'leg', 'arm', 'neck', 'shoulder',
+    'vitamin', 'supplement', 'tablet', 'medicine', 'drug', 'capsule', 'syrup', 'injection',
+    'antibiotic', 'painkiller', 'treatment', 'cure', 'remedy', 'health', 'medical', 'doctor',
+    'hospital', 'disease', 'illness', 'symptom', 'sickness', 'flu', 'viral', 'bacterial',
+    'fungal', 'wound', 'injury', 'burn', 'cut', 'swelling', 'inflammation', 'cramp',
+    'migraine', 'acidity', 'gas', 'bloating', 'constipation', 'digestion', 'liver', 'kidney',
+    'thyroid', 'cholesterol', 'weight', 'obesity', 'pregnancy', 'periods', 'menstrual',
+    'bone', 'fracture', 'sprain', 'arthritis', 'cancer', 'tumor', 'ulcer', 'hernia',
+    'piles', 'hemorrhoids', 'urinary', 'prostate', 'sexual', 'hormonal', 'immunity',
+    'covid', 'corona', 'malaria', 'dengue', 'typhoid', 'jaundice', 'hepatitis', 'tb',
+    'tuberculosis', 'hiv', 'aids', 'epilepsy', 'seizure', 'paralysis', 'stroke', 'bp',
+    'insulin', 'glucose', 'hemoglobin', 'platelet', 'wbc', 'rbc', 'uric',
+    'paracetamol', 'ibuprofen', 'aspirin', 'crocin', 'dolo', 'combiflam', 'calpol',
+    'azithromycin', 'amoxicillin', 'cetirizine', 'montair', 'pantoprazole', 'omeprazole',
+    'metformin', 'amlodipine', 'atorvastatin', 'losartan', 'telmisartan',
+    'zinc', 'iron', 'calcium', 'b12', 'd3', 'folic', 'biotin', 'omega', 'protein',
+    'dard', 'bukhar', 'khansi', 'zukam', 'sir', 'pet', 'kamar', 'ghutna', 'gala',
+    'aankh', 'kaan', 'dant', 'tooth', 'dental', 'oral', 'mouth', 'gum', 'tongue'
+}
+
+NON_MEDICAL_PATTERNS = [
+    'hi', 'hello', 'hey', 'bye', 'thanks', 'thank', 'ok', 'okay', 'yes', 'no', 'please',
+    'help', 'what', 'how', 'why', 'when', 'where', 'who', 'which', 'can', 'could', 'would',
+    'padhai', 'study', 'exam', 'school', 'college', 'job', 'work', 'money', 'salary',
+    'weather', 'time', 'date', 'day', 'movie', 'song', 'music', 'game', 'play', 'food',
+    'recipe', 'cook', 'travel', 'hotel', 'flight', 'train', 'bus', 'car', 'bike',
+    'phone', 'laptop', 'computer', 'internet', 'wifi', 'app', 'website', 'download',
+    'love', 'relationship', 'friend', 'family', 'marriage', 'wedding', 'party',
+    'news', 'politics', 'sports', 'cricket', 'football', 'ipl', 'match',
+    'good', 'bad', 'nice', 'great', 'awesome', 'cool', 'hot', 'beautiful',
+    'kaise', 'kya', 'kab', 'kahan', 'kaun', 'kyun', 'accha', 'theek', 'sahi',
+    'padhai nhi', 'bore', 'boring', 'lonely', 'sad', 'happy', 'angry', 'hungry',
+    'thirsty', 'sleepy', 'lazy', 'busy', 'free', 'available'
+]
+
+def is_medical_query(user_input):
+    """Check if query is medical-related"""
+    query = user_input.lower().strip()
+    
+    if len(query) < 3:
+        return False, "Please describe your health concern in more detail."
+    
+    query_words = query.split()
+    if len(query_words) <= 2:
+        for pattern in NON_MEDICAL_PATTERNS:
+            if pattern in query:
+                return False, "I'm CureBot, a medicine recommendation assistant. Please describe your health symptoms or medical concerns."
+    
+    has_medical_keyword = False
+    for keyword in MEDICAL_KEYWORDS:
+        if keyword in query:
+            has_medical_keyword = True
+            break
+    
+    if not has_medical_keyword and len(query_words) <= 3:
+        return False, "I can only help with health and medicine related queries. Please describe symptoms like 'headache', 'fever', 'stomach pain', etc."
+    
+    return True, None
+
 # --- Initialize Data Globally ---
 print(f"🚀 Initializing {APP_NAME} v{APP_VERSION}...")
 df1, df2 = load_data()
@@ -319,10 +373,7 @@ else:
     DATA_LOADED = False
     print("❌ WARNING: App starting in 'No Data' mode.")
 
-# =============================================================================
-# 2. ML CORE FUNCTIONS - Enhanced Recommendation Engine
-# =============================================================================
-
+# ML CORE FUNCTIONS
 def get_recommendations(user_input):
     """Enhanced recommendation with smart matching"""
     if not DATA_LOADED:
@@ -416,30 +467,32 @@ def get_medicine_details(candidates_df1, df2):
     return unique_medicines
 
 def get_ai_recommendation(user_input):
-    """Main ML function with enhanced processing"""
+    """Main ML function with smart query validation"""
     if not DATA_LOADED:
-        return []
+        return [], None
+    
+    # Smart validation - reject non-medical queries
+    is_valid, error_msg = is_medical_query(user_input)
+    if not is_valid:
+        return [], error_msg
     
     candidates = get_recommendations(user_input)
     
     if candidates.empty:
-        return []
+        return [], "No medicines found for your query. Try describing your symptoms differently."
     
     valid_medicines = get_medicine_details(candidates, df2)
     
-    return valid_medicines
+    if not valid_medicines:
+        return [], "No matching medicines found. Please describe your symptoms more specifically."
+    
+    return valid_medicines, None
 
-# =============================================================================
-# 3. DASH APP SETUP
-# =============================================================================
-
+# DASH APP
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
 server = app.server  # For deployment
 
-# =============================================================================
-# 4. CSS STYLING - Premium Hospital Theme
-# =============================================================================
-
+# CSS & HTML TEMPLATE
 maps_script = f'<script src="https://maps.googleapis.com/maps/api/js?key={GOOGLE_MAPS_API_KEY}&libraries=places"></script>' if GOOGLE_MAPS_ENABLED else ''
 
 app.index_string = f'''
@@ -1494,30 +1547,8 @@ app.index_string = f'''
                 }}
             }});
             
-            // ==================== GOOGLE SIGN-IN ====================
+            // ==================== USER SESSION ====================
             var currentUser = null;
-            
-            function handleCredentialResponse(response) {{
-                // Decode the JWT token
-                var base64Url = response.credential.split('.')[1];
-                var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                var jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {{
-                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                }}).join(''));
-                
-                var user = JSON.parse(jsonPayload);
-                currentUser = {{
-                    name: user.name,
-                    email: user.email,
-                    picture: user.picture
-                }};
-                
-                // Save to localStorage
-                localStorage.setItem('curebot_user', JSON.stringify(currentUser));
-                
-                // Show main app
-                showMainApp(currentUser);
-            }}
             
             function showMainApp(user) {{
                 currentUser = user;
@@ -1530,16 +1561,19 @@ app.index_string = f'''
                     userInfoDiv.innerHTML = `
                         <img src="${{user.picture}}" class="user-avatar" alt="Avatar" onerror="this.src='https://ui-avatars.com/api/?name=${{encodeURIComponent(user.name)}}&background=00695C&color=fff'">
                         <span class="user-name">${{user.name.split(' ')[0]}}</span>
-                        <button class="logout-btn" onclick="logoutUser()">Logout</button>
+                        <button class="logout-btn" onclick="logoutUser()">Exit</button>
                     `;
                 }}
+                
+                // Save to localStorage
+                localStorage.setItem('curebot_user', JSON.stringify(user));
             }}
             
             function skipLogin() {{
                 var guestUser = {{
-                    name: 'Guest',
-                    email: 'guest@curebot.app',
-                    picture: 'https://ui-avatars.com/api/?name=Guest&background=00695C&color=fff'
+                    name: 'User',
+                    email: 'user@curebot.app',
+                    picture: 'https://ui-avatars.com/api/?name=User&background=00695C&color=fff'
                 }};
                 showMainApp(guestUser);
             }}
@@ -1549,81 +1583,18 @@ app.index_string = f'''
                 currentUser = null;
                 document.getElementById('login-page').style.display = 'flex';
                 document.getElementById('main-app').style.display = 'none';
-                
-                // Clear Google session if available
-                if (typeof google !== 'undefined' && google.accounts) {{
-                    google.accounts.id.disableAutoSelect();
-                }}
             }}
             
-            // Initialize Google Sign-In with error handling
-            function initGoogleSignIn() {{
-                try {{
-                    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {{
-                        google.accounts.id.initialize({{
-                            client_id: '{GOOGLE_CLIENT_ID}',
-                            callback: handleCredentialResponse
-                        }});
-                        
-                        // Render the Google Sign-In button
-                        var btnContainer = document.getElementById('google-signin-btn');
-                        if (btnContainer) {{
-                            google.accounts.id.renderButton(
-                                btnContainer,
-                                {{ 
-                                    theme: 'outline', 
-                                    size: 'large',
-                                    shape: 'pill',
-                                    text: 'signin_with',
-                                    logo_alignment: 'center',
-                                    width: 280
-                                }}
-                            );
-                        }}
-                        console.log('Google Sign-In initialized successfully');
-                    }} else {{
-                        throw new Error('Google library not loaded');
-                    }}
-                }} catch(e) {{
-                    console.log('Google Sign-In init error:', e);
-                    showFallbackButton();
-                }}
-            }}
-            
-            function showFallbackButton() {{
-                var fallbackBtn = document.getElementById('fallback-google-btn');
-                if (fallbackBtn) {{
-                    fallbackBtn.style.display = 'flex';
-                }}
-            }}
-            
-            // Try to initialize Google Sign-In multiple times
+            // Check for saved user on page load
             window.onload = function() {{
-                // Check for saved user
                 var savedUser = localStorage.getItem('curebot_user');
                 if (savedUser) {{
                     try {{
                         showMainApp(JSON.parse(savedUser));
-                        return;
-                    }} catch(e) {{}}
+                    }} catch(e) {{
+                        localStorage.removeItem('curebot_user');
+                    }}
                 }}
-                
-                // Try immediate init
-                setTimeout(initGoogleSignIn, 500);
-                // Retry after 2 seconds if failed
-                setTimeout(function() {{
-                    var btn = document.getElementById('google-signin-btn');
-                    if (btn && btn.children.length === 0) {{
-                        initGoogleSignIn();
-                    }}
-                }}, 2000);
-                // Final fallback after 4 seconds
-                setTimeout(function() {{
-                    var btn = document.getElementById('google-signin-btn');
-                    if (btn && btn.children.length === 0) {{
-                        showFallbackButton();
-                    }}
-                }}, 4000);
             }};
             
             // ==================== EMERGENCY MODE ====================
@@ -1853,10 +1824,7 @@ app.index_string = f'''
 </html>
 '''
 
-# =============================================================================
-# 5. APP LAYOUT - Premium Design with Login Page
-# =============================================================================
-
+# APP LAYOUT
 app.layout = html.Div([
     
     # ==================== LOGIN PAGE ====================
@@ -1869,35 +1837,27 @@ app.layout = html.Div([
             html.H1(APP_NAME, className='login-title'),
             html.P(APP_TAGLINE, className='login-subtitle'),
             
-            # Google Sign-In Button Container
-            html.Div(className='google-btn-container', children=[
-                html.Div(id='google-signin-btn', style={'minHeight': '44px'}),
-                # Fallback button if Google fails to load
-                html.Button([
-                    html.Img(src='https://developers.google.com/identity/images/g-logo.png', 
-                            style={'width': '20px', 'height': '20px', 'marginRight': '10px'}),
-                    "Continue with Google"
-                ], id='fallback-google-btn', n_clicks=0, className='fallback-google-btn', style={
-                    'display': 'none',  # Hidden by default, shown by JS if Google fails
-                    'background': 'white', 'border': '2px solid #4285F4', 'borderRadius': '25px',
-                    'padding': '12px 25px', 'fontSize': '15px', 'fontWeight': '600',
-                    'cursor': 'pointer', 'alignItems': 'center', 'justifyContent': 'center',
-                    'color': '#4285F4', 'marginTop': '10px', 'width': '280px',
-                    'boxShadow': '0 2px 10px rgba(66,133,244,0.3)', 'transition': 'all 0.3s ease'
-                })
-            ]),
+            # Enter CureBot Button
+            html.Button([
+                html.Span("🚀", style={'marginRight': '10px', 'fontSize': '20px'}),
+                "Enter CureBot"
+            ], id='skip-login-btn', n_clicks=0, className='enter-curebot-btn', style={
+                'display': 'flex',
+                'background': 'linear-gradient(135deg, #00695C 0%, #00897B 100%)',
+                'border': 'none', 'borderRadius': '30px',
+                'padding': '16px 40px', 'fontSize': '17px', 'fontWeight': '700',
+                'cursor': 'pointer', 'alignItems': 'center', 'justifyContent': 'center',
+                'color': 'white', 'width': '280px',
+                'boxShadow': '0 8px 25px rgba(0,105,92,0.4)', 'transition': 'all 0.3s ease',
+                'textTransform': 'uppercase', 'letterSpacing': '1px'
+            }),
             
-            # Divider
-            html.Div(className='login-divider', children=[
-                html.Span("or")
-            ]),
-            
-            # Skip Login Button
-            html.Button("Continue as Guest", className='skip-login', 
-                       id='skip-login-btn', n_clicks=0),
+            html.P("Get AI-powered medicine recommendations", style={
+                'fontSize': '12px', 'color': '#666', 'marginTop': '12px'
+            }),
             
             # Features
-            html.Div(className='login-features', children=[
+            html.Div(className='login-features', style={'marginTop': '30px'}, children=[
                 html.Div(className='login-feature', children=[
                     html.Div("🤖", className='login-feature-icon'),
                     html.Div("AI Powered", className='login-feature-text')
@@ -1908,7 +1868,7 @@ app.layout = html.Div([
                 ]),
                 html.Div(className='login-feature', children=[
                     html.Div("🗺️", className='login-feature-icon'),
-                    html.Div("Find Pharmacy", className='login-feature-text')
+                    html.Div("Find Hospitals", className='login-feature-text')
                 ]),
             ])
         ])
@@ -2110,9 +2070,7 @@ app.layout = html.Div([
 
 ])
 
-# =============================================================================
-# 6. CALLBACKS
-# =============================================================================
+# CALLBACKS
 
 # Auto-scroll with smooth animation
 app.clientside_callback(
@@ -2265,19 +2223,22 @@ def update_chat(n_clicks, n_submit, *args):
         response_text = "❌ System Error: Database unavailable. Please try again later."
         conversation.append({'role': 'ai', 'content': response_text, 'data': None, 'is_emergency': False, 'gemini_advice': None})
     else:
-        recs = get_ai_recommendation(final_text)
+        recs, error_msg = get_ai_recommendation(final_text)
         
-        # Get Gemini AI advice (if API key configured)
+        # Get Gemini AI advice (if API key configured and we have results)
         gemini_advice = None
         if recs and GEMINI_ENABLED:
             gemini_advice = get_gemini_health_advice(final_text, recs)
         
-        if recs:
+        if error_msg:
+            response_text = f"🤖 {error_msg}"
+            conversation.append({'role': 'ai', 'content': response_text, 'data': None, 'is_emergency': False, 'gemini_advice': None})
+        elif recs:
             response_text = f"✅ Found {len(recs)} medicines matching your symptoms:"
+            conversation.append({'role': 'ai', 'content': response_text, 'data': recs, 'is_emergency': False, 'gemini_advice': gemini_advice})
         else:
             response_text = "😔 No exact matches found. Try different keywords or describe symptoms in more detail."
-        
-        conversation.append({'role': 'ai', 'content': response_text, 'data': recs, 'is_emergency': False, 'gemini_advice': gemini_advice})
+            conversation.append({'role': 'ai', 'content': response_text, 'data': None, 'is_emergency': False, 'gemini_advice': None})
 
     # Render Chat Bubbles
     chat_bubbles = []
@@ -2443,10 +2404,7 @@ def update_chat(n_clicks, n_submit, *args):
 
     return chat_bubbles, conversation, ""
 
-# =============================================================================
-# 7. RUN THE APP
-# =============================================================================
-
+# RUN APP
 if __name__ == '__main__':
     import os
     port = int(os.environ.get('PORT', 7860))  # HuggingFace uses 7860
