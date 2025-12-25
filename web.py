@@ -1878,20 +1878,24 @@ app.layout = html.Div([
             
             # Google Sign-In Button Container
             html.Div(className='google-btn-container', children=[
-                # Google Sign-In button - always visible
-                html.Button([
-                    html.Img(src='https://developers.google.com/identity/images/g-logo.png', 
-                            style={'width': '20px', 'height': '20px', 'marginRight': '10px'}),
-                    "Sign in with Google"
-                ], id='fallback-google-btn', n_clicks=0, className='fallback-google-btn', style={
-                    'display': 'flex',
-                    'background': 'white', 'border': '2px solid #4285F4', 'borderRadius': '25px',
-                    'padding': '12px 25px', 'fontSize': '15px', 'fontWeight': '600',
-                    'cursor': 'pointer', 'alignItems': 'center', 'justifyContent': 'center',
-                    'color': '#4285F4', 'width': '280px',
-                    'boxShadow': '0 2px 10px rgba(66,133,244,0.3)', 'transition': 'all 0.3s ease'
-                }),
-                html.Div(id='google-signin-btn', style={'display': 'none'})
+                # Real Google Sign-In button (works in new tab)
+                html.A([
+                    html.Button([
+                        html.Img(src='https://developers.google.com/identity/images/g-logo.png', 
+                                style={'width': '20px', 'height': '20px', 'marginRight': '10px'}),
+                        "Sign in with Google"
+                    ], style={
+                        'display': 'flex',
+                        'background': 'white', 'border': '2px solid #4285F4', 'borderRadius': '25px',
+                        'padding': '12px 25px', 'fontSize': '15px', 'fontWeight': '600',
+                        'cursor': 'pointer', 'alignItems': 'center', 'justifyContent': 'center',
+                        'color': '#4285F4', 'width': '280px',
+                        'boxShadow': '0 2px 10px rgba(66,133,244,0.3)', 'transition': 'all 0.3s ease'
+                    })
+                ], href='https://anantmani13-curebot.hf.space', target='_blank', style={'textDecoration': 'none'}),
+                html.P("Opens in new tab for Google Sign-In", style={'fontSize': '11px', 'color': '#888', 'marginTop': '5px'}),
+                html.Div(id='google-signin-btn', style={'display': 'none'}),
+                html.Div(id='fallback-google-btn', style={'display': 'none'})
             ]),
             
             # Divider
