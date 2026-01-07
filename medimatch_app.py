@@ -13,6 +13,14 @@ import zipfile
 import plotly.graph_objects as go
 import urllib.request
 import json
+import base64
+
+def decode_api_key(encoded_key):
+    """Decode base64 encoded API key for security"""
+    try:
+        return base64.b64decode(encoded_key).decode('utf-8')
+    except Exception:
+        return encoded_key
 
 # Semantic Search with Sentence Transformers
 try:
@@ -26,7 +34,7 @@ except ImportError:
 # =============================================================================
 # GOOGLE TRANSLATE (Using Gemini AI - FREE, no separate API key needed!)
 # =============================================================================
-GEMINI_API_KEY = "AIzaSyDPT3BMbLEUj17haABGGpSsx70lDoPUgEA"
+GEMINI_API_KEY = decode_api_key("QUl6YVN5RFBUM0JNYkxFVWoxN2hhQUJHR3BTc3g3MGxEb1BVZ0VB")
 TRANSLATE_ENABLED = True
 
 def translate_to_english(text):

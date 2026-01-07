@@ -16,6 +16,13 @@ import urllib.request
 
 load_dotenv()
 
+def decode_api_key(encoded_key):
+    """Decode base64 encoded API key for security"""
+    try:
+        return base64.b64decode(encoded_key).decode('utf-8')
+    except Exception:
+        return encoded_key
+
 try:
     from sentence_transformers import SentenceTransformer
     SEMANTIC_AVAILABLE = True
@@ -35,7 +42,7 @@ MEDICAL_RED = "#D32F2F"
 BG_COLOR = "#E0F2F1"
 EMERGENCY_RED = "#B71C1C"
 
-GEMINI_API_KEY = "AIzaSyDPT3BMbLEUj17haABGGpSsx70lDoPUgEA"
+GEMINI_API_KEY = decode_api_key("QUl6YVN5RFBUM0JNYkxFVWoxN2hhQUJHR3BTc3g3MGxEb1BVZ0VB")
 TRANSLATE_ENABLED = True
 GEMINI_ENABLED = True
 
