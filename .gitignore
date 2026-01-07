@@ -8,6 +8,9 @@ venv/
 .venv/
 ENV/
 
+# Environment variables (NEVER COMMIT THIS!)
+.env
+
 # IDE
 .vscode/
 .idea/
