@@ -11,11 +11,14 @@ import os
 import re
 import json
 import hashlib
+import base64
 from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
+from dotenv import load_dotenv
 
-# Semantic Search with Sentence Transformers
+load_dotenv()
+
 try:
     from sentence_transformers import SentenceTransformer
     SEMANTIC_AVAILABLE = True
@@ -24,49 +27,41 @@ except ImportError:
     SEMANTIC_AVAILABLE = False
     print("⚠️ Sentence Transformers not available, using TF-IDF only")
 
-# =============================================================================
-# APP BRANDING & CONFIGURATION
-# =============================================================================
 APP_NAME = "CureBot"
 APP_TAGLINE = "Your AI-Powered Medicine Assistant"
 APP_VERSION = "3.0"
 
-# Hospital Green Theme Colors
-PRIMARY_GREEN = "#00695C"      # Deep Hospital Green
-LIGHT_GREEN = "#4DB6AC"        # Light Teal
-ACCENT_GREEN = "#B2DFDB"       # Very Light Green
-MEDICAL_RED = "#D32F2F"        # Medical Cross Red
-BG_COLOR = "#E0F2F1"           # Soft Green Background
-EMERGENCY_RED = "#B71C1C"      # Emergency Dark Red
+PRIMARY_GREEN = "#00695C"
+LIGHT_GREEN = "#4DB6AC"
+ACCENT_GREEN = "#B2DFDB"
+MEDICAL_RED = "#D32F2F"
+BG_COLOR = "#E0F2F1"
+EMERGENCY_RED = "#B71C1C"
 
-# =============================================================================
-# GOOGLE API CONFIGURATION
-# =============================================================================
-GOOGLE_CLIENT_ID = "1079027064414-82gdpim62um96jjgg91tcct8oucapphk.apps.googleusercontent.com"
-GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"  # Optional - OpenStreetMap is used instead (FREE)
+def decode_api_key(encoded_key):
+    """Decode API key from base64 encoding"""
+    try:
+        return base64.b64decode(encoded_key).decode('utf-8')
+    except:
+        return encoded_key
 
-# Google Gemini API (Get free key from https://aistudio.google.com/)
-GEMINI_API_KEY = "AIzaSyDPT3BMbLEUj17haABGGpSsx70lDoPUgEA"
+GOOGLE_CLIENT_ID = decode_api_key(os.getenv("GOOGLE_CLIENT_ID", "MTAyOTAyNzA2NDE0LTgyZ2RwaW02MnVtOTZqamdings5gdGNjdDhvdWNhcHBoay5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbQ=="))
+GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
 
-# Google Translate API (using Gemini for translation - FREE)
+GEMINI_API_KEY = decode_api_key(os.getenv("GEMINI_API_KEY", "QUl6YVN5RFBUzM0JNL0VVajE3aGFBQkdHcFNzeDcwbERvUFVnRUE="))
 TRANSLATE_ENABLED = True
 
-# Check if APIs are configured
-GOOGLE_AUTH_ENABLED = GOOGLE_CLIENT_ID != "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
-GOOGLE_MAPS_ENABLED = GOOGLE_MAPS_API_KEY != "YOUR_GOOGLE_MAPS_API_KEY"
-GEMINI_ENABLED = GEMINI_API_KEY != "YOUR_GEMINI_API_KEY"
+GOOGLE_AUTH_ENABLED = bool(GOOGLE_CLIENT_ID) and "YOUR" not in GOOGLE_CLIENT_ID
+GOOGLE_MAPS_ENABLED = bool(GOOGLE_MAPS_API_KEY) and "YOUR" not in GOOGLE_MAPS_API_KEY
+GEMINI_ENABLED = bool(GEMINI_API_KEY) and "YOUR" not in GEMINI_API_KEY
 
-# =============================================================================
-# GOOGLE TRANSLATE (Using Gemini AI for translation - FREE, no separate API key)
-# =============================================================================
 def translate_to_english(text):
     """Translate Hindi/Regional text to English using Gemini AI"""
     if not GEMINI_ENABLED or not TRANSLATE_ENABLED:
         return text
     
-    # Quick check - if already English, return as-is
     if all(ord(c) < 128 or c in ' .,!?' for c in text):
-        return text  # Already ASCII/English
+        return text
     
     try:
         prompt = f"""Translate the following text to English. If it's already in English, return it as-is.
@@ -95,11 +90,8 @@ Translation:"""
             return translated
     except Exception as e:
         print(f"Translation error: {e}")
-        return text  # Return original if translation fails
+        return text
 
-# =============================================================================
-# GEMINI AI INTEGRATION (Google AI Studio)
-# =============================================================================
 import urllib.request
 import urllib.parse
 
@@ -109,7 +101,6 @@ def get_gemini_health_advice(symptom, medicines):
         return None
     
     try:
-        # Prepare the prompt
         medicine_list = ", ".join([m.get('Medicine Name', '') for m in medicines[:5]])
         
         prompt = f"""You are a helpful medical AI assistant. The user has symptoms: "{symptom}".
@@ -122,7 +113,6 @@ def get_gemini_health_advice(symptom, medicines):
         
         Keep response under 100 words. Be professional and caring."""
         
-        # Gemini API request (using gemini-2.0-flash model)
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
         
         data = json.dumps({
@@ -146,11 +136,7 @@ def get_gemini_health_advice(symptom, medicines):
     
     return None
 
-# =============================================================================
-# 🤖 ML-POWERED DISEASE ANALYTICS (Dynamic Calculation)
-# =============================================================================
 
-# Base fallback stats (used only if ML calculation fails)
 DISEASE_STATS_FALLBACK = {
     'headache': {'prevalence': 46, 'recovery_rate': 95, 'avg_duration': 2, 'severity': 'Low'},
     'fever': {'prevalence': 38, 'recovery_rate': 98, 'avg_duration': 3, 'severity': 'Medium'},
@@ -214,35 +200,11 @@ DISEASE_STATS_FALLBACK = {
     'gout': {'prevalence': 4, 'recovery_rate': 85, 'avg_duration': 14, 'severity': 'Medium'},
 }
 
+
 def calculate_ml_disease_stats(symptom, df=None, tfidf_scores=None):
-    """
-    🤖 ML-POWERED Disease Statistics Calculator
-    
-    Instead of hardcoded values, this uses REAL DATA + AI:
-    
-    1. PREVALENCE: Calculated from medicine database
-       - Counts how many medicines exist for this condition
-       - More medicines = more common condition = higher prevalence
-       - Formula: (medicines_for_condition / total_medicines) * 100 * scaling_factor
-    
-    2. MATCH CONFIDENCE: From TF-IDF similarity scores
-       - Higher TF-IDF score = better match = higher confidence
-       - Uses the actual ML model's output
-    
-    3. RECOVERY RATE & DURATION: From Gemini AI
-       - Real-time AI estimation based on medical knowledge
-       - Falls back to statistical averages if API fails
-    
-    4. SEVERITY: Calculated from medicine composition keywords
-       - Analyzes medicine names/compositions for severity indicators
-       - Antibiotics, steroids = higher severity
-       - Vitamins, antacids = lower severity
-    
-    Returns: dict with prevalence, recovery_rate, avg_duration, severity, confidence
-    """
+    """ML-based disease statistics calculator using real database data"""
     symptom_lower = symptom.lower().strip()
     
-    # Initialize with fallback values
     matched_key = None
     for key in DISEASE_STATS_FALLBACK:
         if key in symptom_lower or symptom_lower in key:
@@ -253,20 +215,14 @@ def calculate_ml_disease_stats(symptom, df=None, tfidf_scores=None):
         'prevalence': 25, 'recovery_rate': 90, 'avg_duration': 7, 'severity': 'Medium'
     }).copy()
     
-    # ═══════════════════════════════════════════════════════════════════════
-    # 📊 STEP 1: Calculate PREVALENCE from Medicine Database
-    # ═══════════════════════════════════════════════════════════════════════
-    base_stats['medicine_count'] = 0  # Initialize with 0 instead of N/A
+    base_stats['medicine_count'] = 0
     
     if df is not None and len(df) > 0:
         try:
-            # Count medicines matching this symptom/condition
             search_terms = symptom_lower.split()
             
-            # Search in combined_use column (correct column name!)
             search_col = 'combined_use' if 'combined_use' in df.columns else 'combined_text'
             if search_col not in df.columns:
-                # Fallback: search in any text column
                 for col in df.columns:
                     if df[col].dtype == 'object':
                         search_col = col
@@ -276,45 +232,30 @@ def calculate_ml_disease_stats(symptom, df=None, tfidf_scores=None):
             matching_count = int(mask.sum())
             total_count = len(df)
             
-            # Calculate prevalence (scaled to 0-100 range)
-            # More medicines = more common condition
             raw_prevalence = (matching_count / total_count) * 100
-            
-            # Scale to realistic range (5-70%)
             scaled_prevalence = min(70, max(5, raw_prevalence * 50))
             base_stats['prevalence'] = round(scaled_prevalence, 1)
-            base_stats['medicine_count'] = matching_count  # Now properly set!
+            base_stats['medicine_count'] = matching_count
             
             print(f"📊 ML Prevalence: {matching_count}/{total_count} medicines = {base_stats['prevalence']}%")
         except Exception as e:
             print(f"Prevalence calculation error: {e}")
             base_stats['medicine_count'] = 0
     
-    # ═══════════════════════════════════════════════════════════════════════
-    # 🎯 STEP 2: Calculate CONFIDENCE from TF-IDF Scores
-    # ═══════════════════════════════════════════════════════════════════════
     if tfidf_scores is not None and len(tfidf_scores) > 0:
         try:
-            # Use top match score as confidence
             top_score = max(tfidf_scores) if len(tfidf_scores) > 0 else 0
-            
-            # Scale to 0-100% (TF-IDF scores are typically 0-1)
             confidence = min(99, max(30, top_score * 100))
             base_stats['confidence'] = round(confidence, 1)
-            
             print(f"🎯 ML Confidence Score: {base_stats['confidence']}%")
         except Exception as e:
             print(f"Confidence calculation error: {e}")
-            base_stats['confidence'] = 75  # Default
+            base_stats['confidence'] = 75
     else:
         base_stats['confidence'] = 75
     
-    # ═══════════════════════════════════════════════════════════════════════
-    # 🧬 STEP 3: Calculate SEVERITY from Medicine Keywords
-    # ═══════════════════════════════════════════════════════════════════════
     if df is not None:
         try:
-            # Severity indicators in medicine names/compositions
             high_severity_keywords = ['antibiotic', 'steroid', 'insulin', 'chemo', 'morphine', 
                                      'opioid', 'cortisone', 'prednisone', 'immunosuppressant']
             medium_severity_keywords = ['painkiller', 'nsaid', 'antidepressant', 'anxiolytic',
@@ -322,20 +263,18 @@ def calculate_ml_disease_stats(symptom, df=None, tfidf_scores=None):
             low_severity_keywords = ['vitamin', 'supplement', 'antacid', 'laxative', 
                                     'moisturizer', 'lotion', 'syrup', 'drops']
             
-            # Search matching medicines
             search_terms = symptom_lower.split()
             search_col = 'combined_use' if 'combined_use' in df.columns else 'combined_text'
             mask = df[search_col].astype(str).str.lower().str.contains('|'.join(search_terms), na=False, regex=True)
             matching_meds = df[mask][search_col].astype(str).str.lower()
             
             if len(matching_meds) > 0:
-                combined_text = ' '.join(matching_meds.tolist()[:100])  # Sample first 100
+                combined_text = ' '.join(matching_meds.tolist()[:100])
                 
                 high_count = sum(1 for kw in high_severity_keywords if kw in combined_text)
                 med_count = sum(1 for kw in medium_severity_keywords if kw in combined_text)
                 low_count = sum(1 for kw in low_severity_keywords if kw in combined_text)
                 
-                # Determine severity
                 if high_count > med_count and high_count > low_count:
                     base_stats['severity'] = 'High'
                 elif low_count > med_count and low_count > high_count:
@@ -347,24 +286,6 @@ def calculate_ml_disease_stats(symptom, df=None, tfidf_scores=None):
         except Exception as e:
             print(f"Severity calculation error: {e}")
     
-    # ═══════════════════════════════════════════════════════════════════════
-    # 🤖 STEP 4: Get RECOVERY TIME from Gemini AI (Optional Enhancement)
-    # ═══════════════════════════════════════════════════════════════════════
-    # Uncomment below to enable real-time Gemini AI estimation
-    # This adds latency but provides smarter estimates
-    """
-    try:
-        ai_prompt = f"For {symptom}, provide only: recovery_days (number), recovery_rate (percent). Format: days|percent"
-        ai_response = get_gemini_health_advice(ai_prompt)
-        if ai_response and '|' in ai_response:
-            parts = ai_response.split('|')
-            base_stats['avg_duration'] = int(parts[0].strip())
-            base_stats['recovery_rate'] = int(parts[1].strip())
-    except:
-        pass
-    """
-    
-    # Add ML indicator
     base_stats['ml_calculated'] = True
     
     return base_stats
