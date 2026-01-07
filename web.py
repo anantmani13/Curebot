@@ -4,18 +4,15 @@ import pandas as pd
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.preprocessing import normalize
 import difflib
 import zipfile
 import os
-import re
 import json
-import hashlib
 import base64
 from datetime import datetime
-import plotly.express as px
 import plotly.graph_objects as go
 from dotenv import load_dotenv
+import urllib.request
 
 load_dotenv()
 
@@ -91,9 +88,6 @@ Translation:"""
     except Exception as e:
         print(f"Translation error: {e}")
         return text
-
-import urllib.request
-import urllib.parse
 
 def get_gemini_health_advice(symptom, medicines):
     """Get AI health advice from Google Gemini"""
