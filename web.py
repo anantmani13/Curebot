@@ -223,18 +223,6 @@ def calculate_ml_disease_stats(symptom, df=None, tfidf_scores=None):
             print(f"Prevalence calculation error: {e}")
             base_stats['medicine_count'] = 0
     
-    if tfidf_scores is not None and len(tfidf_scores) > 0:
-        try:
-            top_score = max(tfidf_scores) if len(tfidf_scores) > 0 else 0
-            confidence = min(99, max(30, top_score * 100))
-            base_stats['confidence'] = round(confidence, 1)
-            print(f"🎯 ML Confidence Score: {base_stats['confidence']}%")
-        except Exception as e:
-            print(f"Confidence calculation error: {e}")
-            base_stats['confidence'] = 75
-    else:
-        base_stats['confidence'] = 75
-    
     if df is not None:
         try:
             high_severity_keywords = ['antibiotic', 'steroid', 'insulin', 'chemo', 'morphine', 
@@ -287,24 +275,20 @@ def create_disease_analytics_graph(symptom, tfidf_scores=None):
     """
     🤖 Create ML-POWERED interactive Plotly graphs for disease analytics
     
-    📊 HOW STATS ARE NOW CALCULATED (ML-Based):
-    ============================================
+    📊 HOW STATS ARE CALCULATED:
+    ============================
     
-    1️⃣ PREVALENCE: Calculated from YOUR medicine database!
+    1️⃣ PREVALENCE: Calculated from medicine database
        - Counts medicines matching the symptom
        - More medicines = more common condition
        - Formula: (matching_meds / total_meds) * 100 * scaling_factor
     
-    2️⃣ CONFIDENCE: From TF-IDF similarity scores
-       - Uses the actual ML model's cosine similarity output
-       - Higher score = better match quality
-    
-    3️⃣ SEVERITY: Analyzed from medicine keywords
+    2️⃣ SEVERITY: Analyzed from medicine keywords
        - Scans medicine compositions for indicators
        - Antibiotics/steroids = High severity
        - Vitamins/antacids = Low severity
     
-    4️⃣ RECOVERY TIME: Uses statistical averages
+    3️⃣ RECOVERY TIME: Uses statistical averages
        - Can be enhanced with Gemini AI (optional)
     
     ✅ Now uses REAL DATA from your 248K+ medicine database!
@@ -328,25 +312,21 @@ def create_disease_analytics_graph(symptom, tfidf_scores=None):
             matched_disease = 'cold'
         
         stats = DISEASE_STATS[matched_disease].copy()
-        stats['confidence'] = 75  # Default confidence
         stats['ml_calculated'] = False
         print(f"⚠️ Using fallback stats (ML dataframe not loaded)")
     
     # Create animated gauge chart with modern design
     fig = go.Figure()
     
-    # 🎯 Confidence/Match Quality Gauge (NEW - ML-based!)
-    confidence_value = stats.get('confidence', 75)
-    
     # Recovery Rate Gauge - with gradient colors and animation
     fig.add_trace(go.Indicator(
         mode="gauge+number+delta",
         value=stats['recovery_rate'],
-        number={'suffix': '%', 'font': {'size': 24, 'color': '#00695C', 'family': 'Inter'}},
-        title={'text': f"🩺 Recovery Rate", 'font': {'size': 14, 'color': '#00695C', 'family': 'Inter'}},
+        number={'suffix': '%', 'font': {'size': 28, 'color': '#00695C', 'family': 'Inter'}},
+        title={'text': f"🩺 Recovery Rate", 'font': {'size': 16, 'color': '#00695C', 'family': 'Inter'}},
         delta={'reference': 85, 'increasing': {'color': "#00C853"}, 'decreasing': {'color': '#FF5252'}},
         gauge={
-            'axis': {'range': [0, 100], 'tickwidth': 2, 'tickcolor': "#00695C", 'tickfont': {'size': 10}},
+            'axis': {'range': [0, 100], 'tickwidth': 2, 'tickcolor': "#00695C", 'tickfont': {'size': 12}},
             'bar': {'color': "rgba(0, 105, 92, 0.8)", 'thickness': 0.75},
             'bgcolor': "rgba(178, 223, 219, 0.3)",
             'borderwidth': 2,
@@ -362,17 +342,17 @@ def create_disease_analytics_graph(symptom, tfidf_scores=None):
                 'value': stats['recovery_rate']
             }
         },
-        domain={'x': [0, 0.32], 'y': [0.15, 1]}
+        domain={'x': [0, 0.48], 'y': [0.15, 1]}
     ))
     
-    # Prevalence Gauge - now ML-calculated!
+    # Prevalence Gauge
     fig.add_trace(go.Indicator(
         mode="gauge+number",
         value=stats['prevalence'],
-        number={'suffix': '%', 'font': {'size': 24, 'color': '#7B1FA2', 'family': 'Inter'}},
-        title={'text': "📈 Prevalence", 'font': {'size': 14, 'color': '#7B1FA2', 'family': 'Inter'}},
+        number={'suffix': '%', 'font': {'size': 28, 'color': '#7B1FA2', 'family': 'Inter'}},
+        title={'text': "📈 Prevalence", 'font': {'size': 16, 'color': '#7B1FA2', 'family': 'Inter'}},
         gauge={
-            'axis': {'range': [0, 100], 'tickwidth': 2, 'tickcolor': '#7B1FA2', 'tickfont': {'size': 10}},
+            'axis': {'range': [0, 100], 'tickwidth': 2, 'tickcolor': '#7B1FA2', 'tickfont': {'size': 12}},
             'bar': {'color': "rgba(123, 31, 162, 0.8)", 'thickness': 0.75},
             'bgcolor': "rgba(225, 190, 231, 0.3)",
             'borderwidth': 2,
@@ -388,33 +368,7 @@ def create_disease_analytics_graph(symptom, tfidf_scores=None):
                 'value': stats['prevalence']
             }
         },
-        domain={'x': [0.34, 0.66], 'y': [0.15, 1]}
-    ))
-    
-    # 🆕 ML Confidence Gauge - NEW!
-    fig.add_trace(go.Indicator(
-        mode="gauge+number",
-        value=confidence_value,
-        number={'suffix': '%', 'font': {'size': 24, 'color': '#E65100', 'family': 'Inter'}},
-        title={'text': "🎯 ML Match", 'font': {'size': 14, 'color': '#E65100', 'family': 'Inter'}},
-        gauge={
-            'axis': {'range': [0, 100], 'tickwidth': 2, 'tickcolor': '#E65100', 'tickfont': {'size': 10}},
-            'bar': {'color': "rgba(230, 81, 0, 0.8)", 'thickness': 0.75},
-            'bgcolor': "rgba(255, 224, 178, 0.3)",
-            'borderwidth': 2,
-            'bordercolor': "rgba(230, 81, 0, 0.5)",
-            'steps': [
-                {'range': [0, 40], 'color': 'rgba(255, 82, 82, 0.3)'},
-                {'range': [40, 70], 'color': 'rgba(255, 193, 7, 0.3)'},
-                {'range': [70, 100], 'color': 'rgba(0, 200, 83, 0.3)'}
-            ],
-            'threshold': {
-                'line': {'color': "#E65100", 'width': 4},
-                'thickness': 0.8,
-                'value': confidence_value
-            }
-        },
-        domain={'x': [0.68, 1], 'y': [0.15, 1]}
+        domain={'x': [0.52, 1], 'y': [0.15, 1]}
     ))
     
     # Add annotation for ML info
@@ -3266,7 +3220,6 @@ def update_chat(n_clicks, n_submit, *args):
                     
                     # Determine ML badge
                     ml_badge = "🤖 ML-Calculated" if stats.get('ml_calculated', False) else "📊 Statistical"
-                    confidence_val = stats.get('confidence', 75)
                     
                     chat_bubbles.append(html.Div([
                         html.Div([
@@ -3298,10 +3251,6 @@ def update_chat(n_clicks, n_submit, *args):
                                     'color': '#E53935' if stats['severity'] == 'High' else '#FF9800' if stats['severity'] == 'Medium' else '#4CAF50'
                                 }),
                                 html.Div("Severity Level", className='stat-label')
-                            ], className='stat-card'),
-                            html.Div([
-                                html.Div(f"{confidence_val:.0f}%", className='stat-value'),
-                                html.Div("ML Confidence", className='stat-label')
                             ], className='stat-card'),
                         ], className='analytics-stats')
                     ], className='analytics-container'))
