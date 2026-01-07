@@ -35,22 +35,9 @@ MEDICAL_RED = "#D32F2F"
 BG_COLOR = "#E0F2F1"
 EMERGENCY_RED = "#B71C1C"
 
-def decode_api_key(encoded_key):
-    """Decode API key from base64 encoding"""
-    try:
-        return base64.b64decode(encoded_key).decode('utf-8')
-    except:
-        return encoded_key
-
-GOOGLE_CLIENT_ID = decode_api_key(os.getenv("GOOGLE_CLIENT_ID", "MTAyOTAyNzA2NDE0LTgyZ2RwaW02MnVtOTZqamdings5gdGNjdDhvdWNhcHBoay5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbQ=="))
-GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
-
-GEMINI_API_KEY = decode_api_key(os.getenv("GEMINI_API_KEY", "QUl6YVN5RFBUzM0JNL0VVajE3aGFBQkdHcFNzeDcwbERvUFVnRUE="))
+GEMINI_API_KEY = "AIzaSyDPT3BMbLEUj17haABGGpSsx70lDoPUgEA"
 TRANSLATE_ENABLED = True
-
-GOOGLE_AUTH_ENABLED = bool(GOOGLE_CLIENT_ID) and "YOUR" not in GOOGLE_CLIENT_ID
-GOOGLE_MAPS_ENABLED = bool(GOOGLE_MAPS_API_KEY) and "YOUR" not in GOOGLE_MAPS_API_KEY
-GEMINI_ENABLED = bool(GEMINI_API_KEY) and "YOUR" not in GEMINI_API_KEY
+GEMINI_ENABLED = True
 
 def translate_to_english(text):
     """Translate Hindi/Regional text to English using Gemini AI"""
@@ -1043,8 +1030,6 @@ app.index_string = f'''
         <!-- Leaflet.js - FREE OpenStreetMap -->
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-        <!-- Google Sign-In -->
-        <script src="https://accounts.google.com/gsi/client" async defer></script>
         {{%css%}}
         <style>
             :root {{
@@ -3364,7 +3349,7 @@ if __name__ == '__main__':
     print(f"   💊 Medicines: {len(df1):,}" if df1 is not None else "   💊 Medicines: 0")
     print(f"   🧠 Symptom Categories: {len(SYMPTOM_SYNONYMS)}")
     print(f"   🔋 Status: {'Active ✅' if DATA_LOADED else 'Inactive ❌'}")
-    print(f"   📍 Google Maps: {'Enabled ✅' if GOOGLE_MAPS_ENABLED else 'Click button to use'}")
+    print(f"   🤖 Gemini AI: {'Enabled ✅' if GEMINI_ENABLED else 'Disabled ❌'}")
     print("─"*65)
     print(f"   🌐 Open: http://127.0.0.1:{port}")
     print("═"*65 + "\n")
