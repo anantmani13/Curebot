@@ -1016,8 +1016,6 @@ server = app.server  # For deployment
 # 4. CSS STYLING - Premium Hospital Theme
 # =============================================================================
 
-maps_script = f'<script src="https://maps.googleapis.com/maps/api/js?key={GOOGLE_MAPS_API_KEY}&libraries=places"></script>' if GOOGLE_MAPS_ENABLED else ''
-
 app.index_string = f'''
 <!DOCTYPE html>
 <html>
