@@ -8,7 +8,7 @@ venv/
 .venv/
 ENV/
 
-# Environment variables (NEVER COMMIT THIS!)
+# Environment variables 
 .env
 
 # IDE
